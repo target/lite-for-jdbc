@@ -8,11 +8,11 @@ Lightweight library to help simplify JDBC database access. Main features:
 # Gradle Setup
 ```kotlin
 repositories {
-    maven("https://binrepo.target.com/artifactory/toolshed")
+    mavenCentral()
 }
 
 dependencies {
-  api("toolshed:lite-for-jdbc:1.6.0")
+  api("com.target:lite-for-jdbc:1.8.1")
 }
 ```
 
@@ -441,20 +441,6 @@ you could use the method as shown below
 val propMap = model.propertiesToMap(nameTransformer = ::camelToSnakeCase)
 propMap.containsKey("field_one") shoudlBe true
 propMap.containsKey("fieldOne") shoudlBe false
-```
-
-# lite-for-jdbc-test-common
-
-Another artifact is available to assist in testing code that uses lite-for-jdbc.
-
-```kotlin
-repositories {
-    maven("https://binrepo.target.com/artifactory/toolshed")
-}
-
-dependencies {
-    testImplementation("toolshed:lite-for-jdbc-test-common:1.2.1") 
-}
 ```
 
 ## mockkTransaction
