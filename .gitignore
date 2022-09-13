@@ -1,0 +1,18 @@
+.gradle
+
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+
+build
+.idea
+.kotlintest
+out
+*.ipr
+*.iml
+*.iws
+
+.DS_Store
