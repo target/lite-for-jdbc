@@ -33,6 +33,7 @@ Lightweight library to help simplify JDBC database access. Main features:
   * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
   * [DataSource settings](#datasource-settings)
   * [Testing with mockkTransaction](#testing-with-mockktransaction)
+* [IntelliJ SQL language integration](#intellij-sql-language-integration)
 * [Development](#development)
   * [Building](#building)
   * [Issues](#issues)
@@ -556,6 +557,55 @@ verify {
 confirmVerified(mockTransaction)
 
 ```
+
+# IntelliJ SQL language integration
+
+All the query-related methods provided by this library use `sql` as the method parameter name for SQL.
+Using this pattern, you can add SQL language support to IntelliJ, which will then give you features
+like auto-completion, validation, and syntax highlighting.  To enable this, add or edit your
+project's `.idea/IntelliLang.xml` file with this:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="LanguageInjectionConfiguration">
+    <injection language="SQL" injector-id="kotlin">
+      <display-name>lite-for-jdbc SQL parameter name</display-name>
+      <single-file value="false" />
+      <place><![CDATA[kotlinParameter().withName("sql")]]></place>
+    </injection>
+  </component>
+</project>
+```
+
+An example showing syntax highlighting and available operations:
+
+![](/docs/resources/sql-language-integration.png)
+
+The authors will typically add this file and `sqlDialects.xml` (which associates the project's SQL language
+with the database dialect being used) to source control, ignoring other files in the `.idea` directory.
+Example `.gitignore` file in the `.idea/` directory:
+
+```gitignore
+# Ignore everything in this directory
+*
+
+# Except this file
+!.gitignore
+
+# store IntelliLang.xml customizations
+!IntelliLang.xml
+
+# keep our code style in source control
+!codeStyles/
+!codeStyles/*
+
+# store the SQL dialect for this project
+!sqldialects.xml
+```
+
+In combination with the SQL dialect configured, it provides powerful SQL language support.
+[JetBrains documentation](https://www.jetbrains.com/help/idea/using-language-injections.html)
 
 # Development
 
