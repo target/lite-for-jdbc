@@ -49,11 +49,11 @@ dependencies {
     testApi("com.h2database:h2:$h2Version")
 }
 
-val javaVersion: String by project
+val jvmTargetVersion: String by project
 tasks {
-    compileJava { options.release.set(javaVersion.toInt()) }
-    compileKotlin { kotlinOptions { jvmTarget = javaVersion } }
-    compileTestKotlin { kotlinOptions { jvmTarget = javaVersion } }
+    compileJava { options.release.set(jvmTargetVersion.toInt()) }
+    compileKotlin { kotlinOptions { jvmTarget = jvmTargetVersion } }
+    compileTestKotlin { kotlinOptions { jvmTarget = jvmTargetVersion } }
 
     withType<Test> {
         useJUnitPlatform()
