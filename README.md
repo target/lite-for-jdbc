@@ -1,9 +1,45 @@
 # lite-for-jdbc
 Lightweight library to help simplify JDBC database access. Main features:
-- Lets you use real SQL statements in your code along with named parameters
+- Lets you use SQL statements with named parameters
 - Automates resource cleanup
-- Provides a handful of functions for common database interaction patterns like executing
-  individual SQL statements, selecting individual and list results, and batch statements.
+- Provides a functions for common database interaction patterns like individual and list result
+  handling, updates, and batch statements
+
+<!-- TOC -->
+* [lite-for-jdbc](#lite-for-jdbc)
+* [Gradle Setup](#gradle-setup)
+* [Db Setup](#db-setup)
+* [Methods](#methods)
+  * [executeQuery](#executequery)
+  * [findAll](#findall)
+  * [executeUpdate](#executeupdate)
+  * [executeWithGeneratedKeys](#executewithgeneratedkeys)
+  * [executeBatch](#executebatch)
+  * [useNamedParamPreparedStatement](#usenamedparampreparedstatement)
+  * [useNamedParamPreparedStatementWithAutoGenKeys](#usenamedparampreparedstatementwithautogenkeys)
+  * [useConnection](#useconnection)
+* [Query Parameters](#query-parameters)
+  * [Named Parameters](#named-parameters)
+  * [Positional Params](#positional-params)
+* [Row Mapping](#row-mapping)
+  * [rowMapper](#rowmapper)
+  * [ResultSet extensions](#resultset-extensions)
+  * [Date Time in Postgresql](#date-time-in-postgresql)
+    * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
+  * [propertiesToMap](#propertiestomap)
+* [Transactions & Autocommit](#transactions--autocommit)
+  * [withAutoCommit](#withautocommit)
+  * [withTransaction](#withtransaction)
+  * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
+  * [DataSource settings](#datasource-settings)
+  * [Testing with mockkTransaction](#testing-with-mockktransaction)
+* [Development](#development)
+  * [Building](#building)
+  * [Issues](#issues)
+  * [Contributing](#contributing)
+    * [Code review standards](#code-review-standards)
+    * [Testing standards](#testing-standards)
+<!-- TOC -->
 
 # Gradle Setup
 ```kotlin
@@ -12,20 +48,20 @@ repositories {
 }
 
 dependencies {
-  api("com.target:lite-for-jdbc:1.8.1")
+    api("com.target:lite-for-jdbc:1.8.1")
 }
 ```
 
 # Db Setup
 
 The core of lite-for-jdbc is the Db class. A Db object is intended to be used as a singleton and
-injected as a dependency in your Repository classes. The
-runtime setup is very open. Provide a DataSource to construct a new
-Db object. If the project has multiple DataSources, create multiple Db objects.
+injected as a dependency in repository classes. It requires a DataSource constructor argument,
+and there is a DataSourceFactory to help with that.
+The typical recommendation is to use Hikari, which is configured with reasonable defaults, but you can customize
+it to any DataSource.
+Examples:
 
-The most common use case requires a Connection Pool. The recommendation in this case is to Hikari, and a
-DataSourceFactory has been provided for such a use case. Reasonable defaults are set in the Config, but they should be
-reviewed for your project. It can be used as follows:
+Hikari:
 
 ```kotlin
 val dataSource = DatasourceFactory(DbConfig(
@@ -37,7 +73,7 @@ val dataSource = DatasourceFactory(DbConfig(
 val db = Db(dataSource)
 ```
 
-For an in-memory DB option, H2 is supports
+H2 in-memory:
 
 ```kotlin
 val dataSource = DatasourceFactory(DbConfig(
@@ -66,60 +102,107 @@ val db = Db(dataSource)
 # Methods
 ## executeQuery
 
-Signature: executeQuery(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): T?
-
-executeQuery is used to run select queries and map the response. This query will only process the FIRST result. If
-multiple results are returned, the rest will be ignored.
-
 ```kotlin
-val user: User  = db.executeQuery(sql = "SELECT id, username FROM USERS WHERE id = :id",
-  args = mapOf("id" to 86753),
-  rowMapper = { resultSet -> User(resultSet.toMap()) },
-)
+executeQuery(
+    sql: String, 
+    args: Map<String, Any?> = mapOf(), 
+    rowMapper: (rs: ResultSet) -> T
+): T?
 ```
 
-Or if you want to be more concise (this applies to all the following examples):
+executeQuery is used to for queries intended to return a single result. Example:
+
 ```kotlin
-val user: User  = db.executeQuery(sql = "SELECT id, username FROM USERS WHERE id = :id",
-    args = mapOf("id" to 86753)) { resultSet ->
-    User(resultSet.toMap())
+val user: User? = db.executeQuery(
+    sql = "SELECT * FROM USERS WHERE id = :id",
+    args = mapOf("id" to 86753)
+) { resultSet ->
+    User(
+        id = getLong("id"),
+        userName = getString("username"),
+    )
 }
 ```
 
+If you have more than one method in your repository that needs to map a resultSet into the same domain object,
+it's typical to extract the mapper into a standalone function.
+```kotlin
+val user: User?  = db.executeQuery(sql = "SELECT * FROM USERS WHERE id = :id",
+  args = mapOf("id" to 86753),
+  rowMapper = ::mapToUser
+)
+
+private fun mapToUser(resultSet: ResultSet) = with(resultSet) {
+    User(
+        id = getLong("id"),
+        userName = getString("username"),
+    )
+}
+```
+
+`executeQuery` returns a nullable object. If you expect the query to never be null, a common idiom is
+to wrap the call with `checkNotNull`. e.g.
+
+```kotlin
+val user: User = checkNotNull(
+    db.executeQuery(
+        sql = "SELECT * FROM USERS WHERE id = :id",
+        args = mapOf("id" to 86753),
+        rowMapper = ::mapToUser
+    )
+) { "Unexpected state: Query didn't return a result." }
+```
+
 ## findAll
+```kotlin
+findAll(
+    sql: String, 
+    args: Map<String, Any?> = mapOf(), 
+    rowMapper: (rs: ResultSet) -> T
+): List<T>
+```
 
-Signature: findAll(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): List<T>
-
-findAll is used to run select queries and map the responses. This query will process all of the results
+findAll is used to query for a list of results. e.g.
 
 ```kotlin
 val adminUsers: List<User> = db.findAll(
   sql = "SELECT id, username FROM USERS WHERE is_admin = :isAdmin",
   args = mapOf("isAdmin" to true),
-  rowMapper = { resultSet -> resultSetToUser(resultSet) },
+  rowMapper = ::mapToUser
 )
 ```
 
 ## executeUpdate
+```kotlin
+executeUpdate(
+    sql: String, 
+    args: Map<String, Any?> = mapOf()
+): Int
+```
 
-Signature: executeUpdate(sql: String, args: Map<String, Any?> = mapOf()): Int
-
-executeUpdate is used to run queries with no response data, such as an UPDATE or DDL. No rowMapper is provided because
-there will be no results to map.
+executeUpdate is used for statements that do not require a resultSet response. For example updates
+and DDL. It returns the number of rows affected by the query.
 
 ```kotlin
-val model = Model(id = 100, field1 = "testName", field2 = 1000)
 val count = db.executeUpdate(sql = "INSERT INTO T (id, field1, field2) VALUES (:id, :field1, :field2)",
-  args = model.toMap()
+  args = model.propertiesToMap()
 )
 println("$count row(s) inserted")
 ```
 
+Docs on the helper function [propertiesToMap](#propertiestomap)
+
 ## executeWithGeneratedKeys
+```kotlin
+executeWithGeneratedKeys(
+    sql: String, 
+    args: Map<String, Any?> = mapOf(), 
+    rowMapper: (rs: ResultSet) -> T
+): List<T>
 
-Signature: executeWithGeneratedKeys(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): List<T>
+```
 
-executeWithGeneratedKeys is used to run queries that will generate default value, using something like a sequence or a
+executeWithGeneratedKeys is used for queries that generate a default value, using something like a sequence or a
 random UUID. These results will need to be mapped since multiple columns can be populated by defaults in a single
 insert.
 
@@ -127,7 +210,7 @@ insert.
 // Table T has an auto-generated value for the ID column in this example
 val model = Model(field1 = "testName1", field2 = 1001)
 val results = db.executeWithGeneratedKeys(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
-  args = listOf(model.toMap(), model2.toMap()),
+  args = listOf(model.propertiesToMap(), model2.propertiesToMap()),
   rowMapper = { resultSet -> resultSet.get("id") }
 )
 
@@ -136,27 +219,36 @@ val newModel = model.copy(id = results.first())
 
 ## executeBatch
 
-Signature: executeBatch(sql: String, args: List<Map<String, Any?>>): List<Int>
+```kotlin
+executeBatch(
+    sql: String, 
+    args: List<Map<String, Any?>>
+): List<Int>
+```
 
-executeBatch is used to run the same SQL statement with different parameters in batch mode. This can be used to improve
-performance.
+executeBatch is used to run the same SQL statement with different parameters in batch mode. 
+This can give you significant performance improvements.
 
 ```kotlin
 val model1 = Model(field1 = "testName1", field2 = 1001)
 val model2 = Model(field1 = "testName2", field2 = 1002)
 val results = db.executeBatch(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
-  args = listOf(model1.toMap(), model2.toMap())
+  args = listOf(model1.propertiesToMap(), model2.propertiesToMap())
 )
 
 results.forEach { println("$it row(s) inserted")}
 ```
 
 ## useNamedParamPreparedStatement
-
-Signature: useNamedParamPreparedStatement(sql: String, block: (NamedParamPreparedStatement) -> T): T
+```kotlin
+useNamedParamPreparedStatement(
+    sql: String, 
+    block: (NamedParamPreparedStatement) -> T
+): T
+```
 
 usePreparedStatement is used to run blocks of code against a prepared statement that is created for you, and clean up
-is done automatically. This should only be used if none of the above methods meet your needs, and you need access to the
+is done automatically. This should only be used if none of the above methods meet your needs and you need access to the
 raw NamedParamPreparedStatement.
 
 This method will NOT return generated keys.
@@ -165,8 +257,12 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useNamedParamPreparedStatementWithAutoGenKeys
-
-Signature: useNamedParamPreparedStatementWithAutoGenKeys(sql: String, block: (NamedParamPreparedStatement) -> T): T
+```kotlin
+useNamedParamPreparedStatementWithAutoGenKeys(
+    sql: String, 
+    block: (NamedParamPreparedStatement) -> T
+): T
+```
 
 useNamedParamPreparedStatementWithAutoGenKeys is used to run blocks of code against a prepared statement that is created
 for you, and clean up is done automatically. This should only be used if none of the above methods meet your needs, and
@@ -178,20 +274,21 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useConnection
+```kotlin
+useConnection(block: (Connection) -> T): T
+```
 
-Signature: useConnection(block: (Connection) -> T): T
-
-useConnection is the lowest level method, and as such should only be used if you require access to the JDBC Connection
-directly. The connection will be created for you, and after the execution it will be cleaned up.
+useConnection is the lowest level method, and should only be used if you require direct access to the 
+JDBC Connection. The connection will be created and cleaned up for you.
 
 # Query Parameters
 
-lite-for-jdbc supports named parameters in your query. The Named Parameter syntax is recommended pattern
-for ease of maintenance and readability. Positional Parameters are also supported for backword
-compatability.
-
-Every method described below is using the Named Parameter pattern. There is also a Positional
-Parameter version of each method by adding PositionalParams at the end of the method name.
+lite-for-jdbc supports named parameters in your query. The named parameter syntax is the recommended pattern
+for ease of maintenance and readability. All the examples use named parameters.
+Positional parameters are also supported for backword compatability. The positional parameter
+version of each method is available by adding `PositionalParams` to the method name.
+For example, to query using named parameters, call `executeQuery`, and to query using positional
+parameters, call `executeQueryPositionalParams`.
 
 ## Named Parameters
 
@@ -205,7 +302,7 @@ In the above example, invoking it would require a map defind like this
 mapOf("value1" to "string value", "value2" to 123)
 ```
 
-Named Parameters can NOT be mixed with positional parameters. Doing so will result in an exception.
+Named Parameters can NOT be mixed with positional parameters - doing so will result in an exception.
 ```sql
 -- ILLEGAL
 SELECT * FROM T WHERE field = :value1 OR field2 = ?
@@ -216,7 +313,7 @@ Colons inside of quotes or double quotes will be ignored.
 SELECT * FROM T WHERE field = 'This will ignore the : in the string'
 ```
 
-If you have some syntax that requires a colon in the SQL, you can escape a colon by using a double colon
+If you need a colon in the SQL, escape it with a double colon.
 ```sql
 SELECT * FROM T WHERE field = ::systemVariableInOracle
 ```
@@ -236,62 +333,6 @@ for more details on the syntax.
 The Positional Parameter methods accept varargs, and the order of the arguments will dictate the position in the query
 
 There is one exception to the use of varargs, and that's the executeBatchPositionalParams. That accepts a List of Lists.
-
-# ConnectionSession (Transactions & Autocommit)
-
-A ConnectionSession is a single use of a connection from the Datasource before it's closed (returning it to the pool
-if a Connection Pool is being used).
-
-Using withAutoCommit and withTransaction on Db will give you the opportunity to use a single ConnectionSession for
-multiple calls. Calling the find & execute methods on Db will create a new AutoCommit ConnectionSession for each call.
-
-## withAutoCommit
-
-AutoCommit will commit any DML (INSERT, UPDATE, DELETE, ...) statements immediately upon execution. If a transaction
-isn't required, this is more performant and simpler. See the withTransaction section to determine if your use case
-may require transactions
-
-Since Db has convenience methods for executing a single command in its own ConnectionSession, withAutoCommit is not
-required. But for efficiency reasons, it should be used if multiple sql commands will be executed so that a single
-ConnectionSession is used.
-
-At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be closed.
-
-## withTransaction
-
-By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
-multiple features listed below. If any of these features are required, use withTransaction.
-
-* Commit - Commits any existing changes to the database and clears any Savepoints and Locks
-* Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
-  have been done. A partial rollback can also be done to a specific Savepoint
-* Savepoint - Saves the current point of the transaction which can be used to perform a partial Rollback
-* Locks - While not available as an explicit method on the transaction, executing a query to lock database resources,
-  which will prevent the use by other connections. See the documentation of your database for specifics on what locks
-  are available and what behavior they provide.
-
-At the end of the withTransaction block, if the block is exited normally the Transaction will be committed. If an
-exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
-will be closed.
-
-## DataSource configuration & AutoCommit
-
-A datasource has a default setting for the autocommit flag which can be configured. But the individual connections can
-be modified to change their autocommit flag. This will be done if the autocommit flag is set to be incompatible with the
-ConnectionSession being used. withTransaction requires a connection with autocommit set to false, and withAutoCommit
-requires a connection with autocommit set to true.
-
-Because lite-for-jdbc will modify the setting to function with the ConnectionSession, you will not see functionality issues
-regardless of your setting. But you should set the DataSource to default to the most common use case in your application,
-as there is a potential performance impact to changing that setting.
-
-
-## DataSource settings
-
-If the datasource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
-changed for the duration of that ConnectionSession
-
-## 
 
 # Row Mapping
 
@@ -340,7 +381,6 @@ To facilitate mapping, ResultSet.get[Date/Time] extensions have been added to Re
 | getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                 |
 
 ## Date Time in Postgresql
-
 
 | Type            | Postgresql Type | Description                                         | Example fields          |
 |-----------------|-----------------|-----------------------------------------------------|-------------------------|
@@ -407,19 +447,11 @@ private fun ResultSet.toDelivery() : Delivery = Delivery(
   deliveryTimezone = java.time.ZoneId.of(getString("delivery_timezone"))
 )
 
-private fun Delivery.toMap(): Map<String, Any> {
- return mapOf( 
-   "id" to id, 
-   "deliver_address" to deliveryAddress, 
-   "delivery_timestamp" to deliveryTimestamp, 
-   "delivery_timezone" to deliveryTimezone
- )
-}
 ```
 
 ## propertiesToMap
 
-A convenience method has been added to turn an object into a map of it's properties. This can be useful to turn a
+A convenience method has been added to turn an object into a map of its properties. This can be useful to turn a
 domain into a map to then be used as named parameters.
 
 ```kotlin
@@ -435,7 +467,7 @@ propMap.containsKey("fieldOne") shoudlBe false
 
 And nameTransformer allows you to transform the keys in the map if you want to use named parameters that don't strictly
 match the field names on the domain class. For example, if you want the named parameters in your query to use snake case,
-you could use the method as shown below
+you could use the method as shown below. 
 
 ```kotlin
 val propMap = model.propertiesToMap(nameTransformer = ::camelToSnakeCase)
@@ -443,7 +475,57 @@ propMap.containsKey("field_one") shoudlBe true
 propMap.containsKey("fieldOne") shoudlBe false
 ```
 
-## mockkTransaction
+# Transactions & Autocommit
+
+Using withAutoCommit and withTransaction on Db will give you the opportunity to use a single ConnectionSession for
+multiple calls. Calling the find & execute methods on Db will create a new AutoCommit ConnectionSession for each call.
+
+## withAutoCommit
+
+AutoCommit will commit any DML (INSERT, UPDATE, DELETE, ...) statements immediately upon execution. If a transaction
+isn't required, this is more performant and simpler. See the withTransaction section to determine if your use case
+may require transactions
+
+Since Db has convenience methods for executing a single command in its own ConnectionSession, withAutoCommit is not
+required. But for efficiency reasons, it should be used if multiple sql commands will be executed so that a single
+ConnectionSession is used.
+
+At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be closed.
+
+## withTransaction
+
+By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
+multiple features listed below. If any of these features are required, use withTransaction.
+
+* Commit - Commits any existing changes to the database and clears any Savepoints and Locks
+* Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
+  have been done. A partial rollback can also be done to a specific Savepoint
+* Savepoint - Saves the current point of the transaction which can be used to perform a partial Rollback
+* Locks - While not available as an explicit method on the transaction, executing a query to lock database resources,
+  which will prevent the use by other connections. See the documentation of your database for specifics on what locks
+  are available and what behavior they provide.
+
+At the end of the withTransaction block, if the block is exited normally the Transaction will be committed. If an
+exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
+will be closed.
+
+## DataSource configuration & AutoCommit
+
+A datasource has a default setting for the autocommit flag which can be configured. But the individual connections can
+be modified to change their autocommit flag. This will be done if the autocommit flag is set to be incompatible with the
+ConnectionSession being used. withTransaction requires a connection with autocommit set to false, and withAutoCommit
+requires a connection with autocommit set to true.
+
+Because lite-for-jdbc will modify the setting to function with the ConnectionSession, you will not see functionality issues
+regardless of your setting. But you should set the DataSource to default to the most common use case in your application,
+as there is a potential performance impact to changing that setting.
+
+## DataSource settings
+
+If the datasource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
+changed for the duration of that ConnectionSession
+
+## Testing with mockkTransaction
 
 The mockkTransaction method works with mockk. A mock DB (using mockk) is provided to the function. The mockDb will be
 setup to invoke any lambda provided while calling withTransaction, providing it with a mock transaction. The mock
@@ -475,7 +557,7 @@ confirmVerified(mockTransaction)
 
 ```
 
-# Lite for JDBC Development
+# Development
 
 ## Building
 
