@@ -15,35 +15,45 @@ plugins {
 group = "com.target"
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.10")
 
-    implementation("com.zaxxer:HikariCP:5.0.1")
+    val kotlinReflectVersion: String by project
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinReflectVersion")
 
-    implementation("ch.qos.logback:logback-classic:1.4.0")
-    implementation("io.github.microutils:kotlin-logging-jvm:2.1.23")
-    implementation("org.slf4j:slf4j-api:2.0.0")
+    val hikariCPVersion: String by project
+    implementation("com.zaxxer:HikariCP:$hikariCPVersion")
 
-    api("com.target:health-monitor-interface:1.2.0")
+    val logbackVersion: String by project
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    val kotlinLoggingVersion: String by project
+    implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
+    val slf4jVersion: String by project
+    implementation("org.slf4j:slf4j-api:$slf4jVersion")
 
-    testFixturesApi("io.mockk:mockk:1.12.7")
+    val healthMonitorInterfaceVersion: String by project
+    api("com.target:health-monitor-interface:$healthMonitorInterfaceVersion")
 
-    val junitVersion = "5.9.0"
-    val kotestVersion = "5.4.2"
+    val mockkVersion: String by project
+    testFixturesApi("io.mockk:mockk:$mockkVersion")
+
+    val junitVersion: String by project
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    val kotestVersion: String by project
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-property:$kotestVersion")
     testImplementation("io.kotest:kotest-extensions:$kotestVersion")
-    testImplementation("io.mockk:mockk:1.12.7")
+    testImplementation("io.mockk:mockk:$mockkVersion")
 
-    testApi("com.h2database:h2:2.1.214")
+    val h2Version: String by project
+    testApi("com.h2database:h2:$h2Version")
 }
 
+val javaVersion: String by project
 tasks {
-    compileJava { options.release.set(11) }
-    compileKotlin { kotlinOptions { jvmTarget = "11" } }
-    compileTestKotlin { kotlinOptions { jvmTarget = "11" } }
+    compileJava { options.release.set(javaVersion.toInt()) }
+    compileKotlin { kotlinOptions { jvmTarget = javaVersion } }
+    compileTestKotlin { kotlinOptions { jvmTarget = javaVersion } }
 
     withType<Test> {
         useJUnitPlatform()
