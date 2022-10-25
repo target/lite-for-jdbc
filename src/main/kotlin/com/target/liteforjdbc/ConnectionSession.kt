@@ -87,11 +87,14 @@ sealed class ConnectionSession(
         callKeyGenInternal(sql, args, mapGeneratedKeys(rowMapper))
 
     /**
-     * Executes a query using PreparedStatement.executeBatch() and returns the list of Int. The args are in a List of
-     * Lists. The outer list represents batches, the inner list is positional parameters for each query in the batch.
+     * Executes a query using PreparedStatement.addBatch() and executeBatch() and returns the list of Int. The args are
+     * in a List of Lists. The outer list represents batches, the inner list is positional parameters for each query
+     * in the batch.
      *
      * So args.size should be the same as the returned result's size. And each nested list should all have a size that
      * matches the number of query parameters.
+     *
+     * The returned list will provide the corresponding count of the rows affected for each query in the batch.
      *
      * The query should use positional parameters indicated by '?', as per the JDBC spec. Pass the args in query order
      */
@@ -99,11 +102,13 @@ sealed class ConnectionSession(
         callBatchInternalPositionalParams(sql, mapBatch(), args)
 
     /**
-     * Executes a query using PreparedStatement.executeBatch() and returns the list of Int. The args are in a List of
-     * Lists. The outer list represents batches, the inner list is positional parameters for each query in the batch.
+     * Executes a query using PreparedStatement.addBatch() and executeBatch() and returns the list of Int. The args are
+     * in a List of Maps. The outer list represents batches, the maps are named parameters for each query in the batch.
      *
-     * So args.size should be the same as the returned result's size. And each nested list should all have a size that
-     * matches the number of query parameters.
+     * So args.size should be the same as the returned result's size. And each map should have an entry for all the
+     * named parameters in the query.
+     *
+     * The returned list will provide the corresponding count of the rows affected for each query in the batch.
      *
      * The query should use named parameters indicated by a colon followed by the parameter name, such as :value.
      * The args are provided in a map with the parameter name as the key. So if the parameter named value should be 1,
