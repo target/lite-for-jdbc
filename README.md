@@ -237,7 +237,7 @@ insert model1, and the second will insert model2.
 
 RowMapper maps the results to the specified result type. 
 
-The response is a list of Objects T. Each object will represent a result returned from a batch query. Most likely there will
+The response is a list of Objects of type `T`. Each object represents a batch query result. Most likely there will
 be one result per query execution. In the following example the results list will have 2 elements. The first element will 
 provide the generated ID of the model1 object, the second element will provide the generated ID of the model2 object. 
 
