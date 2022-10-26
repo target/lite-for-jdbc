@@ -232,7 +232,7 @@ executeBatch is used to run the same SQL statement with different parameters in 
 This can give you significant performance improvements.
 
 Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters 
-for that execution. In the following example there will be two queries executed in a single bath. The first will 
+for that execution. In the following example there will be two queries executed in a single batch. The first will 
 insert model1, and the second will insert model2.
 
 RowMapper will map the results to an object. Use this if the query is generating keys or otherwise selecting results.
