@@ -118,6 +118,22 @@ class DbTest {
     }
 
     @Test
+    fun executeBatchPositionalParamsWithGeneratedKeys() {
+        val sql = "sql"
+        val args = listOf(listOf(1, "arg2"))
+        val rowMapper = { resultSet: ResultSet -> resultSet.getString("test") }
+
+        val expected = listOf("string")
+
+        every { mockAutoCommit.executeBatchPositionalParams(sql, args, rowMapper) } returns expected
+        val result = partialDb.executeBatchPositionalParams(sql, args, rowMapper)
+
+        result shouldBeSameInstanceAs expected
+        verify { mockAutoCommit.executeBatchPositionalParams(sql, args, rowMapper) }
+        confirmVerified(mockAutoCommit)
+    }
+
+    @Test
     fun executeBatch() {
         val sql = "sql"
         val args = listOf(mapOf("arg1" to 1, "arg2" to "arg2"))
@@ -129,6 +145,21 @@ class DbTest {
 
         result shouldBeSameInstanceAs expected
         verify { mockAutoCommit.executeBatch(sql, args) }
+        confirmVerified(mockAutoCommit)
+    }
+
+    fun executeBatchWithGeneratedKeys() {
+        val sql = "sql"
+        val args = listOf(mapOf("arg1" to 1, "arg2" to "arg2"))
+        val rowMapper = { resultSet: ResultSet -> resultSet.getString("test") }
+
+        val expected = listOf("string")
+
+        every { mockAutoCommit.executeBatch(sql, args, rowMapper) } returns expected
+        val result = partialDb.executeBatch(sql, args, rowMapper)
+
+        result shouldBeSameInstanceAs expected
+        verify { mockAutoCommit.executeBatch(sql, args, rowMapper) }
         confirmVerified(mockAutoCommit)
     }
 

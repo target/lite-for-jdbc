@@ -107,7 +107,7 @@ val db = Db(dataSource)
 executeQuery(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
-    rowMapper: (rs: ResultSet) -> T
+    rowMapper: RowMapper<T>
 ): T?
 ```
 
@@ -159,7 +159,7 @@ val user: User = checkNotNull(
 findAll(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
-    rowMapper: (rs: ResultSet) -> T
+    rowMapper: RowMapper<T>
 ): List<T>
 ```
 
@@ -198,7 +198,7 @@ Docs on the helper function [propertiesToMap](#propertiestomap)
 executeWithGeneratedKeys(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
-    rowMapper: (rs: ResultSet) -> T
+    rowMapper: RowMapper<T>
 ): List<T>
 
 ```
@@ -223,8 +223,9 @@ val newModel = model.copy(id = results.first())
 ```kotlin
 executeBatch(
     sql: String, 
-    args: List<Map<String, Any?>>
-): List<Int>
+    args: List<Map<String, Any?>>,
+    rowMapper: RowMapper<T>
+): List<T>
 ```
 
 executeBatch is used to run the same SQL statement with different parameters in batch mode. 
@@ -232,6 +233,40 @@ This can give you significant performance improvements.
 
 Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters 
 for that execution. In the following example there will be two queries executed in a single bath. The first will 
+insert model1, and the second will insert model2.
+
+RowMapper will map the results to an object. Use this if the query is generating keys or otherwise selecting results.
+
+The response is a list of Objects T. Each object will represent a result returned from a batch query. Most likely there will
+be one result per query execution. In the following example the results list will have 2 elements. The first element will 
+provide the generated ID of the model1 object, the second element will provide the generated ID of the model2 object. 
+
+```kotlin
+val model1 = Model(field1 = "testName1", field2 = 1001)
+val model2 = Model(field1 = "testName2", field2 = 1002)
+val results = db.executeBatch(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
+  args = listOf(model1.propertiesToMap(), model2.propertiesToMap()),
+  rowMapper = { resultSet -> resultSet.get("id") }
+)
+
+val newModel1 = model1.copy(id = results[0])
+val newModel2 = model2.copy(id = results[1])
+```
+
+## executeBatch Counts only
+
+```kotlin
+executeBatch(
+    sql: String, 
+    args: List<Map<String, Any?>>
+): List<Int>
+```
+
+executeBatch is used to run the same SQL statement with different parameters in batch mode.
+This can give you significant performance improvements.
+
+Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters
+for that execution. In the following example there will be two queries executed in a single bath. The first will
 insert model1, and the second will insert model2.
 
 The response is a list of Int. Each Int indicates the rows affected by the respective query execution. In the following
