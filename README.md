@@ -235,7 +235,7 @@ Args is a list of maps. Each item in the list will be a query execution in a bat
 for that execution. In the following example there will be two queries executed in a single batch. The first will 
 insert model1, and the second will insert model2.
 
-RowMapper will map the results to an object. Use this if the query is generating keys or otherwise selecting results.
+RowMapper maps the results to the specified result type. 
 
 The response is a list of Objects T. Each object will represent a result returned from a batch query. Most likely there will
 be one result per query execution. In the following example the results list will have 2 elements. The first element will 
