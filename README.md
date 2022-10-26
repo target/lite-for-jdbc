@@ -239,7 +239,7 @@ RowMapper maps the results to the specified result type.
 
 The response is a list of Objects of type `T`. Each object represents a batch query result. Most likely there will
 be one result per query execution. In the following example the results list will have 2 elements. The first element  
-provide the generated ID of the model1 object, the second element will provide the generated ID of the model2 object. 
+provides the generated ID of the model1 object, and the second element provides the generated ID of the model2 object. 
 
 ```kotlin
 val model1 = Model(field1 = "testName1", field2 = 1001)
