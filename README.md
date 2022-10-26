@@ -242,15 +242,16 @@ be one result per query execution. In the following example the results list wil
 provides the generated ID of the model1 object, and the second element provides the generated ID of the model2 object. 
 
 ```kotlin
-val model1 = Model(field1 = "testName1", field2 = 1001)
-val model2 = Model(field1 = "testName2", field2 = 1002)
-val results = db.executeBatch(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
-  args = listOf(model1.propertiesToMap(), model2.propertiesToMap()),
-  rowMapper = { resultSet -> resultSet.get("id") }
+val models = listOf(
+    Model(field1 = "testName1", field2 = 1001),
+    Model(field1 = "testName2", field2 = 1002)
 )
 
-val newModel1 = model1.copy(id = results[0])
-val newModel2 = model2.copy(id = results[1])
+val insertedIds = db.executeBatch(
+    sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
+    args = models.map { it.propertiesToMap() },
+    rowMapper = { resultSet -> resultSet.get("id") }
+)
 ```
 
 ## executeBatch Counts only
