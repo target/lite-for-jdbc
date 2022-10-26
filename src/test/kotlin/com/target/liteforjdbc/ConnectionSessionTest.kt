@@ -23,7 +23,7 @@ class ConnectionSessionTest {
     lateinit var mockInsertPreparedStatement: PreparedStatement
 
     @MockK(relaxed = true)
-    lateinit var mockGeneratredKeysResultSet: ResultSet
+    lateinit var mockGeneratedKeysResultSet: ResultSet
 
     lateinit var autoCommit: AutoCommit
 
@@ -33,6 +33,15 @@ class ConnectionSessionTest {
 
     private val sql = "SELECT * FROM TABLE WHERE FIELD = ? OR FIELD2 = ?"
     private val insertSql = "INSERT INTO TABLE (FIELD, FIELD2) VALUES (?, ?)"
+
+    private val name1 = "name1"
+    private val name2 = "name2"
+
+    private val generatedKey1 = 10
+    private val generatedKey2 = 11
+
+    private val batchRowCount1 = 1
+    private val batchRowCount2 = 2
 
     @BeforeEach
     fun setUp() {
@@ -55,15 +64,15 @@ class ConnectionSessionTest {
 
         every { mockPreparedStatement.executeQuery() } returns mockResultSet
         every { mockResultSet.next() } returnsMany listOf(true, true, false)
-        every { mockResultSet.getString("name") } returnsMany listOf("name1", "name2")
+        every { mockResultSet.getString("name") } returnsMany listOf(name1, name2)
 
         every { mockInsertPreparedStatement.executeUpdate() } returns 2
-        every { mockInsertPreparedStatement.generatedKeys } returns mockGeneratredKeysResultSet
-        every { mockGeneratredKeysResultSet.next() } returnsMany listOf(true, true, false)
-        every { mockGeneratredKeysResultSet.getInt("id") } returnsMany listOf(10, 11)
+        every { mockInsertPreparedStatement.generatedKeys } returns mockGeneratedKeysResultSet
+        every { mockGeneratedKeysResultSet.next() } returnsMany listOf(true, true, false)
+        every { mockGeneratedKeysResultSet.getInt("id") } returnsMany listOf(generatedKey1, generatedKey2)
 
         every { mockInsertPreparedStatement.addBatch() } returns Unit
-        every { mockInsertPreparedStatement.executeBatch() } returns intArrayOf(1, 2)
+        every { mockInsertPreparedStatement.executeBatch() } returns intArrayOf(batchRowCount1, batchRowCount2)
     }
 
     @Test
@@ -212,8 +221,8 @@ class ConnectionSessionTest {
         )
 
         result.size shouldBe 2
-        result[0] shouldBe 10
-        result[1] shouldBe 11
+        result[0] shouldBe generatedKey1
+        result[1] shouldBe generatedKey2
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)
@@ -237,8 +246,8 @@ class ConnectionSessionTest {
         ) { resultSet -> resultSet.getInt("id") }
 
         result.size shouldBe 2
-        result[0] shouldBe 10
-        result[1] shouldBe 11
+        result[0] shouldBe generatedKey1
+        result[1] shouldBe generatedKey2
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)
@@ -263,8 +272,8 @@ class ConnectionSessionTest {
         )
 
         result.size shouldBe 2
-        result[0] shouldBe 1
-        result[1] shouldBe 2
+        result[0] shouldBe batchRowCount1
+        result[1] shouldBe batchRowCount2
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(insertSql)
@@ -294,8 +303,8 @@ class ConnectionSessionTest {
         )
 
         result.size shouldBe 2
-        result[0] shouldBe 1
-        result[1] shouldBe 2
+        result[0] shouldBe batchRowCount1
+        result[1] shouldBe batchRowCount2
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(insertSql)
@@ -312,12 +321,76 @@ class ConnectionSessionTest {
         confirmVerified(mockAutoCommitConnection, mockInsertPreparedStatement)
     }
 
+
+    @Test
+    fun testExecuteBatchWithGeneratedKeys() {
+        val namedSql = "INSERT INTO TABLE (FIELD, FIELD2) VALUES (:fieldVal, :field2Val)"
+
+        val result = autoCommit.executeBatch(
+            namedSql,
+            listOf(
+                mapOf("fieldVal" to "value", "field2Val" to 1),
+                mapOf("fieldVal" to "value2", "field2Val" to 2)
+            )
+        ) { resultSet -> resultSet.getInt("id") }
+
+        result.size shouldBe 2
+        result[0] shouldBe generatedKey1
+        result[1] shouldBe generatedKey2
+
+        verifyAll {
+            mockAutoCommitConnection.autoCommit
+            mockAutoCommitConnection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)
+            mockInsertPreparedStatement.addBatch()
+            mockInsertPreparedStatement.setObject(1, "value")
+            mockInsertPreparedStatement.setObject(2, 1)
+            mockInsertPreparedStatement.addBatch()
+            mockInsertPreparedStatement.setObject(1, "value2")
+            mockInsertPreparedStatement.setObject(2, 2)
+            mockInsertPreparedStatement.executeBatch()
+            mockInsertPreparedStatement.generatedKeys
+            mockInsertPreparedStatement.close()
+        }
+
+        confirmVerified(mockAutoCommitConnection, mockInsertPreparedStatement)
+    }
+
+    @Test
+    fun testExecuteBatchPositionalParamsWithGeneratedKeys() {
+        val result = autoCommit.executeBatchPositionalParams(
+            insertSql,
+            listOf(
+                listOf("value", 1),
+                listOf("value2", 2)
+            )
+        ) { resultSet -> resultSet.getInt("id") }
+
+        result.size shouldBe 2
+        result[0] shouldBe generatedKey1
+        result[1] shouldBe generatedKey2
+        verifyAll {
+            mockAutoCommitConnection.autoCommit
+            mockAutoCommitConnection.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)
+            mockInsertPreparedStatement.addBatch()
+            mockInsertPreparedStatement.setObject(1, "value")
+            mockInsertPreparedStatement.setObject(2, 1)
+            mockInsertPreparedStatement.addBatch()
+            mockInsertPreparedStatement.setObject(1, "value2")
+            mockInsertPreparedStatement.setObject(2, 2)
+            mockInsertPreparedStatement.executeBatch()
+            mockInsertPreparedStatement.generatedKeys
+            mockInsertPreparedStatement.close()
+        }
+
+        confirmVerified(mockAutoCommitConnection, mockInsertPreparedStatement)
+    }
+
     @Test
     fun testExecuteQueryPositionalParams() {
         val result = autoCommit.executeQueryPositionalParams(sql, { resultSet -> Model(resultSet.getString("name")) })
 
         checkNotNull(result)
-        result.name shouldBe "name1"
+        result.name shouldBe name1
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(sql)
@@ -337,7 +410,7 @@ class ConnectionSessionTest {
         )
 
         checkNotNull(result)
-        result.name shouldBe "name1"
+        result.name shouldBe name1
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(sql)
@@ -360,7 +433,7 @@ class ConnectionSessionTest {
         ) { resultSet -> Model(resultSet.getString("name")) }
 
         checkNotNull(result)
-        result.name shouldBe "name1"
+        result.name shouldBe name1
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(sql)
@@ -379,8 +452,8 @@ class ConnectionSessionTest {
         val result = autoCommit.findAllPositionalParams(sql, { resultSet -> Model(resultSet.getString("name")) })
 
         result.size shouldBe 2
-        result[0].name shouldBe "name1"
-        result[1].name shouldBe "name2"
+        result[0].name shouldBe name1
+        result[1].name shouldBe name2
 
         verifyAll {
             mockAutoCommitConnection.autoCommit
@@ -401,8 +474,8 @@ class ConnectionSessionTest {
         )
 
         result.size shouldBe 2
-        result[0].name shouldBe "name1"
-        result[1].name shouldBe "name2"
+        result[0].name shouldBe name1
+        result[1].name shouldBe name2
         verifyAll {
             mockAutoCommitConnection.autoCommit
             mockAutoCommitConnection.prepareStatement(sql)
@@ -426,8 +499,8 @@ class ConnectionSessionTest {
         ) { resultSet -> Model(resultSet.getString("name")) }
 
         result.size shouldBe 2
-        result[0].name shouldBe "name1"
-        result[1].name shouldBe "name2"
+        result[0].name shouldBe name1
+        result[1].name shouldBe name2
 
         verifyAll {
             mockAutoCommitConnection.autoCommit

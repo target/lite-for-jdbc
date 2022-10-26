@@ -137,10 +137,11 @@ class IntegrationTest {
 
         val finalCount = tableKeyGenCount()
 
+        val expectedId = tableKeyGenIdByField1("Temp")
         clearKeyGenTable()
 
         ids.size shouldBe 1
-        ids[0] shouldBeGreaterThan 0
+        ids[0] shouldBe expectedId
         finalCount shouldBe 1
     }
 
@@ -156,10 +157,11 @@ class IntegrationTest {
 
         val finalCount = tableKeyGenCount()
 
+        val expectedId = tableKeyGenIdByField1("Temp")
         clearKeyGenTable()
 
         ids.size shouldBe 1
-        ids[0] shouldBeGreaterThan 0
+        ids[0] shouldBe expectedId
         finalCount shouldBe 1
     }
 
@@ -167,7 +169,7 @@ class IntegrationTest {
     fun testExecuteBatch() {
         clearKeyGenTable()
 
-        val rowCounts = db.executeBatch(
+        val result = db.executeBatch(
             "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (:field1, :field2, :field3)",
             listOf(
                 mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0)),
@@ -178,9 +180,32 @@ class IntegrationTest {
         val finalCount = tableKeyGenCount()
         clearKeyGenTable()
 
-        rowCounts.size shouldBe 2
-        rowCounts[0] shouldBe 1
-        rowCounts[0] shouldBe 1
+        result.size shouldBe 2
+        result[0] shouldBe 1
+        result[1] shouldBe 1
+        finalCount shouldBe 2
+    }
+
+    @Test
+    fun testExecuteBatchWithGeneratedKeys() {
+        clearKeyGenTable()
+
+        val result = db.executeBatch(
+            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (:field1, :field2, :field3)",
+            listOf(
+                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0)),
+                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1)),
+            )
+        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+
+        val finalCount = tableKeyGenCount()
+        val expectedId1 = tableKeyGenIdByField1("Temp")
+        val expectedId2 = tableKeyGenIdByField1("Temp2")
+        clearKeyGenTable()
+
+        result.size shouldBe 2
+        result[0] shouldBe expectedId1
+        result[1] shouldBe expectedId2
         finalCount shouldBe 2
     }
 
@@ -202,6 +227,29 @@ class IntegrationTest {
         rowCounts.size shouldBe 2
         rowCounts[0] shouldBe 1
         rowCounts[0] shouldBe 1
+        finalCount shouldBe 2
+    }
+
+    @Test
+    fun testExecuteBatchPositionalParamsWithGeneratedKeys() {
+        clearKeyGenTable()
+
+        val result = db.executeBatchPositionalParams(
+            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (?, ?, ?)",
+            listOf(
+                listOf("Temp", 10, Instant.ofEpochMilli(0)),
+                listOf("Temp2", 11, Instant.ofEpochMilli(1)),
+            )
+        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+
+        val finalCount = tableKeyGenCount()
+        val expectedId1 = tableKeyGenIdByField1("Temp")
+        val expectedId2 = tableKeyGenIdByField1("Temp2")
+        clearKeyGenTable()
+
+        result.size shouldBe 2
+        result[0] shouldBe expectedId1
+        result[1] shouldBe expectedId2
         finalCount shouldBe 2
     }
 
@@ -313,6 +361,13 @@ class IntegrationTest {
         return checkNotNull(db.executeQuery(
             "SELECT COUNT(*) cnt FROM KEY_GEN_T"
         ) { resultSet -> resultSet.getInt("cnt") })
+    }
+
+    private fun tableKeyGenIdByField1(field1Val: String): Int {
+        return checkNotNull(db.executeQuery(
+            "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
+            mapOf( "field1Val" to field1Val )
+        ) { resultSet -> resultSet.getInt("id") })
     }
 
     private fun clearKeyGenTable() {

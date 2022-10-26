@@ -45,16 +45,17 @@ open class Db(
      */
     fun executeUpdate(sql: String, args: Map<String, Any?> = mapOf()): Int = withAutoCommit { it.executeUpdate(sql, args) }
 
+
     /**
      * @see AutoCommit#executeWithGeneratedKeysPositionalParams
      */
-    fun <T> executeWithGeneratedKeysPositionalParams(sql: String, rowMapper: (rs: ResultSet) -> T, vararg args: Any?): List<T> =
+    fun <T> executeWithGeneratedKeysPositionalParams(sql: String, rowMapper: RowMapper<T>, vararg args: Any?): List<T> =
         withAutoCommit { it.executeWithGeneratedKeysPositionalParams(sql, rowMapper, *args) }
 
     /**
      * @see AutoCommit#executeWithGeneratedKeys
      */
-    fun <T> executeWithGeneratedKeys(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): List<T> =
+    fun <T> executeWithGeneratedKeys(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: RowMapper<T>): List<T> =
         withAutoCommit { it.executeWithGeneratedKeys(sql, args, rowMapper) }
 
     /**
@@ -64,33 +65,45 @@ open class Db(
         withAutoCommit { it.executeBatchPositionalParams(sql, args) }
 
     /**
+     * @see AutoCommit#executeBatchPositionalParams
+     */
+    fun <T> executeBatchPositionalParams(sql: String, args: List<List<Any?>>, rowMapper: RowMapper<T>): List<T> =
+        withAutoCommit { it.executeBatchPositionalParams(sql, args, rowMapper) }
+
+    /**
      * @see AutoCommit#executeBatch
      */
     fun executeBatch(sql: String, args: List<Map<String, Any?>>): List<Int> =
         withAutoCommit { it.executeBatch(sql, args) }
 
     /**
+     * @see AutoCommit#executeBatch
+     */
+    fun <T> executeBatch(sql: String, args: List<Map<String, Any?>>, rowMapper: RowMapper<T>): List<T> =
+        withAutoCommit { it.executeBatch(sql, args, rowMapper) }
+
+    /**
      * @see AutoCommit#executeQueryPositionalParams
      */
-    fun <T> executeQueryPositionalParams(sql: String, rowMapper: (rs: ResultSet) -> T, vararg args: Any?): T? =
+    fun <T> executeQueryPositionalParams(sql: String, rowMapper: RowMapper<T>, vararg args: Any?): T? =
         withAutoCommit { it.executeQueryPositionalParams(sql, rowMapper, *args) }
 
     /**
      * @see AutoCommit#executeQuery
      */
-    fun <T> executeQuery(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): T? =
+    fun <T> executeQuery(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: RowMapper<T>): T? =
         withAutoCommit { it.executeQuery(sql, args, rowMapper) }
 
     /**
      * @see AutoCommit#findAllPositionalParams
      */
-    fun <T> findAllPositionalParams(sql: String, rowMapper: (rs: ResultSet) -> T, vararg args: Any?): List<T> =
+    fun <T> findAllPositionalParams(sql: String, rowMapper: RowMapper<T>, vararg args: Any?): List<T> =
         withAutoCommit { it.findAllPositionalParams(sql, rowMapper, *args) }
 
     /**
      * @see AutoCommit#findAll
      */
-    fun <T> findAll(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: (rs: ResultSet) -> T): List<T> =
+    fun <T> findAll(sql: String, args: Map<String, Any?> = mapOf(), rowMapper: RowMapper<T>): List<T> =
         withAutoCommit { it.findAll(sql, args, rowMapper) }
 
     /**
