@@ -75,6 +75,14 @@ class PreparedStatementSetParametersTest {
     }
 
     @Test
+    fun testSetParameterForEnum() {
+        val value = DbType.POSTGRES
+        preparedStatementProxy.setParameter(1, value)
+
+        verify { mockPreparedStatement.setString(1, value.name) }
+    }
+
+    @Test
     fun testSetParameterForObject() {
         val value = BigDecimal("10")
         preparedStatementProxy.setParameter(1, value)

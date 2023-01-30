@@ -15,9 +15,6 @@ class ResultSetDateTimesTest {
     @MockK(relaxed = true)
     lateinit var mockResultSet: ResultSet
 
-    @MockK(relaxed = true)
-    lateinit var mockMetaData: ResultSetMetaData
-
     private val localDateTime = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC)
     private val localDate = LocalDate.of(1970, 1, 1)
     private val localTime = LocalTime.ofSecondOfDay(0)

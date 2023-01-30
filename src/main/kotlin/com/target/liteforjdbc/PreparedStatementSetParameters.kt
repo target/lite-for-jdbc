@@ -1,6 +1,7 @@
 package com.target.liteforjdbc
 
 import java.sql.PreparedStatement
+import java.sql.Types
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -39,6 +40,7 @@ fun PreparedStatement.setParameter(index: Int, arg: Any?) {
     when (arg) {
         is ZonedDateTime -> this.setZonedDateTime(index, arg)
         is Instant -> this.setInstant(index, arg)
+        is Enum<*> -> this.setString(index, arg.name)
 
         else -> this.setObject(index, arg)
     }

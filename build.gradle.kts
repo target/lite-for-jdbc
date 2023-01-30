@@ -44,6 +44,12 @@ dependencies {
     testImplementation("io.kotest:kotest-property:$kotestVersion")
     testImplementation("io.kotest:kotest-extensions:$kotestVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
+    val testContainersVersion: String by project
+    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+
+    val postgresqlVersion: String by project
+    testImplementation("org.postgresql:postgresql:$postgresqlVersion")
 
     val h2Version: String by project
     testApi("com.h2database:h2:$h2Version")
