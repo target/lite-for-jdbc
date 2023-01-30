@@ -67,7 +67,8 @@ sealed class ConnectionSession(
      * So args.size should be the same as the returned result's size. And each nested list should all have a size that
      * matches the number of query parameters.
      *
-     * The returned list will provide the corresponding count of the rows affected for each query in the batch.
+     * The returned list will provide the corresponding count of the rows affected for each query in the batch. However,
+     * some databases may return negative numbers to indicate that the actual row count cannot be found.
      *
      * The query should use positional parameters indicated by '?', as per the JDBC spec. Pass the args in query order
      */
@@ -81,7 +82,8 @@ sealed class ConnectionSession(
      * So args.size should be the same as the returned result's size. And each map should have an entry for all the
      * named parameters in the query.
      *
-     * The returned list will provide the corresponding count of the rows affected for each query in the batch.
+     * The returned list will provide the corresponding count of the rows affected for each query in the batch. However,
+     * some databases may return negative numbers to indicate that the actual row count cannot be found.
      *
      * The query should use named parameters indicated by a colon followed by the parameter name, such as :value.
      * The args are provided in a map with the parameter name as the key. So if the parameter named value should be 1,

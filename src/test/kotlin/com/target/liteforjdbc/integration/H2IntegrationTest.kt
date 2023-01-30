@@ -1,8 +1,7 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.integration
 
-import io.kotest.matchers.ints.shouldBeGreaterThan
+import com.target.liteforjdbc.*
 import io.kotest.matchers.shouldBe
-import org.h2.jdbcx.JdbcDataSource
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -11,27 +10,33 @@ import java.time.Instant
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class IntegrationTest {
-    private lateinit var db: Db
+class H2IntegrationTest {
+    lateinit var db: Db
 
-    private val countResultSetMap = { resultSet: ResultSet -> resultSet.getInt("cnt") }
     @BeforeAll
     fun setupClass() {
-        val dataSource = JdbcDataSource()
-        dataSource.setURL("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1")
-        dataSource.user = "sa"
-        dataSource.password = ""
+        val dbConfig = DbConfig(
+            type = DbType.H2_INMEM,
+            username = "user",
+            password = "password",
+            databaseName = "test"
+        )
+
+        val dataSource = DatasourceFactory(dbConfig).dataSource()
 
         db = Db(dataSource)
 
         // Setup
-        db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP )")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02')")
+        db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
 
-        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id INT AUTO_INCREMENT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id INT AUTO_INCREMENT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
+        // Setup
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
+
     }
+
 
     @Test
     fun testUseConnection() {
@@ -63,7 +68,7 @@ class IntegrationTest {
 
     @Test
     fun testExecuteUpdate() {
-        db.executeUpdate("INSERT INTO T (id, field1, field2) VALUES (123, 'Temp', 10)")
+        db.executeUpdate("INSERT INTO T (id, field1, field2, annoyed_parent) VALUES (123, 'Temp', 10, 'ONE')")
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
         db.executeUpdate("DELETE FROM T WHERE id = 123")
@@ -84,11 +89,12 @@ class IntegrationTest {
     @Test
     fun testExecuteUpdatePositionalParams() {
         db.executeUpdatePositionalParams(
-            "INSERT INTO T (id, field1, field2, field3) VALUES (?, ?, ?, ?)",
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?, ?)",
             123,
             "Temp",
             10,
-            Instant.ofEpochMilli(0)
+            Instant.ofEpochMilli(0),
+            AnnoyedParent.TWO
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
@@ -100,8 +106,8 @@ class IntegrationTest {
     @Test
     fun testExecuteWithParams() {
         db.executeUpdate(
-            "INSERT INTO T (id, field1, field2, field3) VALUES (:id, :field1, :field2, :field3)",
-            mapOf("id" to 123, "field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0))
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
+            mapOf("id" to 123, "field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.TWO)
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
@@ -131,8 +137,8 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val ids = db.executeWithGeneratedKeys(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (:field1, :field2, :field3)",
-            mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0))
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
+            mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.THREE)
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
         val finalCount = tableKeyGenCount()
@@ -150,9 +156,9 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val ids = db.executeWithGeneratedKeysPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (?, ?, ?)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             { resultSet: ResultSet -> resultSet.getInt("id") },
-            "Temp", 10, Instant.ofEpochMilli(0)
+            "Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO_AND_A_HALF
         )
 
         val finalCount = tableKeyGenCount()
@@ -170,10 +176,10 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatch(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (:field1, :field2, :field3)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0)),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1)),
+                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
+                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO),
             )
         )
 
@@ -191,10 +197,10 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatch(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (:field1, :field2, :field3)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0)),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1)),
+                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
+                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -214,10 +220,10 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val rowCounts = db.executeBatchPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (?, ?, ?)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
-                listOf("Temp", 10, Instant.ofEpochMilli(0)),
-                listOf("Temp2", 11, Instant.ofEpochMilli(1)),
+                listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO),
+                listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO_AND_A_HALF),
             )
         )
 
@@ -235,10 +241,10 @@ class IntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatchPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3) VALUES (?, ?, ?)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
-                listOf("Temp", 10, Instant.ofEpochMilli(0)),
-                listOf("Temp2", 11, Instant.ofEpochMilli(1)),
+                listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.ONE),
+                listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -282,16 +288,22 @@ class IntegrationTest {
     @Test
     fun testFindAll() {
         val result = db.findAll(
-            "SELECT * FROM T ORDER BY field3",
-        ) { resultSet -> resultSet.toModel() }
+            sql ="SELECT * FROM T ORDER BY field3",
+            rowMapper = modelResultSetMap)
 
         result.size shouldBe 3
         result[0]::class shouldBe Model::class
         result[0].id shouldBe 1
         result[0].field3 shouldBe Instant.ofEpochMilli(0)
+        result[0].annoyedParent shouldBe AnnoyedParent.ONE
         result[1]::class shouldBe Model::class
         result[1].id shouldBe 2
         result[1].field3 shouldBe Instant.ofEpochMilli(1000)
+        result[1].annoyedParent shouldBe AnnoyedParent.TWO
+        result[2]::class shouldBe Model::class
+        result[2].id shouldBe 3
+        result[2].field3 shouldBe Instant.ofEpochMilli(2000)
+        result[2].annoyedParent shouldBe AnnoyedParent.TWO_AND_A_HALF
 
     }
 
@@ -299,7 +311,7 @@ class IntegrationTest {
     fun testFindAllPositionalParams() {
         val result = db.findAllPositionalParams(
             "SELECT * FROM T WHERE field2 > ?",
-            { resultSet -> resultSet.toModel() },
+            rowMapper = modelResultSetMap,
             15
         )
 
@@ -311,8 +323,9 @@ class IntegrationTest {
     fun testFindAllWithParams() {
         val result = db.findAll(
             "SELECT * FROM T WHERE field2 > :field2Min",
-            mapOf("field2Min" to 15)
-        ) { resultSet -> resultSet.toModel() }
+            mapOf("field2Min" to 15),
+            rowMapper = modelResultSetMap,
+        )
 
         result.size shouldBe 2
         result[0]::class shouldBe Model::class
@@ -323,10 +336,10 @@ class IntegrationTest {
     fun testSaveAndDelete() {
         val originalCount = tableCount()
 
-        val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0))
+        val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
         db.executeUpdate(
-            "INSERT INTO T (id, field1, field2, field3) VALUES (:id, :field1, :field2, :field3)",
-            model.toMap()
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
+            model.propertiesToMap()
         )
 
         val newCount = tableCount()
@@ -335,15 +348,16 @@ class IntegrationTest {
 
         val result = checkNotNull(db.executeQuery(
             "SELECT * FROM T WHERE id = :id",
-            mapOf("id" to 100)
-        ) { resultSet -> resultSet.toModel() })
+            mapOf("id" to 100),
+            modelResultSetMap
+        ))
 
         result shouldBe model
         result.field3 shouldBe Instant.ofEpochMilli(0)
 
         db.executeUpdate(
             "DELETE FROM T WHERE id = :id",
-            model.toMap()
+            model.propertiesToMap()
         )
 
         val finalCount = tableCount()
@@ -351,44 +365,27 @@ class IntegrationTest {
         finalCount shouldBe originalCount
     }
 
-    private fun tableCount(): Int {
+    fun tableCount(): Int {
         return checkNotNull(db.executeQuery(
             "SELECT COUNT(*) cnt FROM T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
-    private fun tableKeyGenCount(): Int {
+    fun tableKeyGenCount(): Int {
         return checkNotNull(db.executeQuery(
             "SELECT COUNT(*) cnt FROM KEY_GEN_T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
-    private fun tableKeyGenIdByField1(field1Val: String): Int {
+    fun tableKeyGenIdByField1(field1Val: String): Int {
         return checkNotNull(db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
             mapOf( "field1Val" to field1Val )
         ) { resultSet -> resultSet.getInt("id") })
     }
 
-    private fun clearKeyGenTable() {
+    fun clearKeyGenTable() {
         db.executeUpdate("DELETE FROM KEY_GEN_T")
     }
 
-    data class Model(
-        val id: Int,
-        val field1: String,
-        val field2: Int,
-        val field3: Instant,
-    ) {
-        fun toMap(): Map<String, Any> {
-            return mapOf("id" to id, "field1" to field1, "field2" to field2, "field3" to field3)
-        }
-    }
-
-    private fun ResultSet.toModel(): Model = Model(
-        id = getInt("id"),
-        field1 = getString("field1"),
-        field2 = getInt("field2"),
-        field3 = checkNotNull(getInstant("field3"))
-    )
 }
