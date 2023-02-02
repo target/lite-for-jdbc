@@ -1,16 +1,6 @@
 package com.target.liteforjdbc
 
-import javax.sql.DataSource
-
-/**
- * Datasource factory for Postgres connection via a Hikari pool.
- *
- * See the PostgresDatasourceFactory.Config implementation for default values
- */
-class H2InMemDatasourceFactory(private val config: DbConfig) {
-
-    private val hikariDatasourceFactory = HikariDatasourceFactory(config)
-
-    fun dataSource(): DataSource = hikariDatasourceFactory.dataSource("jdbc:h2:mem:${config.databaseName};DB_CLOSE_DELAY=-1")
-
+fun buildH2JdbcUrl(config: DbConfig, jdbcTypePart: String): String {
+    checkNotBlank(config.databaseName) { "config.databaseName is required for H2 datasources" }
+    return "jdbc:h2:${jdbcTypePart}:${config.databaseName};DB_CLOSE_DELAY=-1;PASSWORD=${config.password};USER=${config.username}"
 }

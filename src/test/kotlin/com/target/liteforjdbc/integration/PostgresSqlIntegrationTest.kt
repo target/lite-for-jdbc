@@ -13,7 +13,7 @@ import java.time.Instant
 
 
 @Testcontainers
-class PostgresSqlIntegrationTest() {
+class PostgresSqlIntegrationTest {
     companion object {
         lateinit var db: Db
         var postgres: GenericContainer<*> = GenericContainer(DockerImageName.parse("postgres:15.1"))
@@ -33,10 +33,7 @@ class PostgresSqlIntegrationTest() {
                 password = "password",
                 databaseName = "test"
             )
-            println(dbConfig)
-
-            val dataSource = DatasourceFactory(dbConfig).dataSource()
-            db = Db(dataSource)
+            db = Db(dbConfig)
             // Now we have an address and port for Redis, no matter where it is running
             db.executeUpdate("CREATE TYPE annoyed_parent_type AS ENUM ( 'ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE' )")
             db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")

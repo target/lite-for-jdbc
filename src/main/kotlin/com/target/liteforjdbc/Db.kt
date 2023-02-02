@@ -35,6 +35,8 @@ open class Db(
     private val dataSource: DataSource,
 ) {
 
+    constructor(config: DbConfig) : this(DataSourceFactoryRegistry.dataSource(config))
+
     /**
      * @see AutoCommit#executeUpdatePositionalParams
      */

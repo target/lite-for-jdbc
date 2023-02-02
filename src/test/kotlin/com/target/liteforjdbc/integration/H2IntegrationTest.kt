@@ -2,29 +2,29 @@ package com.target.liteforjdbc.integration
 
 import com.target.liteforjdbc.*
 import io.kotest.matchers.shouldBe
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.sql.ResultSet
 import java.time.Instant
 
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class H2IntegrationTest {
     lateinit var db: Db
 
-    @BeforeAll
+    @BeforeEach
     fun setupClass() {
         val dbConfig = DbConfig(
             type = DbType.H2_INMEM,
             username = "user",
             password = "password",
-            databaseName = "test"
+            databaseName = "H2IntegrationTest"
         )
 
-        val dataSource = DatasourceFactory(dbConfig).dataSource()
-
-        db = Db(dataSource)
+        db = Db(dbConfig)
 
         // Setup
         db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
@@ -34,9 +34,14 @@ class H2IntegrationTest {
         db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
         db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
         db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
-
     }
 
+    @AfterEach
+    fun teardown() {
+        db.executeUpdate("DROP TABLE T")
+
+        db.executeUpdate("DROP TABLE KEY_GEN_T")
+    }
 
     @Test
     fun testUseConnection() {

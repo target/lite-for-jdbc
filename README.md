@@ -57,39 +57,54 @@ dependencies {
 
 The core of lite-for-jdbc is the Db class. A Db object is intended to be used as a singleton and
 injected as a dependency in repository classes. It requires a DataSource constructor argument,
-and there is a DataSourceFactory to help with that.
+and there is a DataSourceFactoryRegistry to help with that.
 The typical recommendation is to use Hikari, which is configured with reasonable defaults, but you can customize
 it to any DataSource.
 Examples:
 
-Hikari:
+Using DataSourceFactoryRegistry directly:
 
 ```kotlin
-val dataSource = DatasourceFactory(DbConfig(
-    username = "user",
-    password = "password",
-    databaseName = "dbName"
-)).dataSource()
-
-val db = Db(dataSource)
-```
-
-H2 in-memory:
-
-```kotlin
-val dataSource = DatasourceFactory(DbConfig(
+val config = DbConfig(
   type = "H2_INMEM",
   username = "user",
   password = "password",
   databaseName = "dbName"
-)).dataSource()
+)
+val datasource = DataSourceFactoryRegistry.dataSource(config)
 
-val db = Db(dataSource)
+val db = Db(datasource)
 ```
 
-See DbConfig for a full list of configuration options available.
+Or you can use the Db constructor that accepts a DbConfig directly. Db will use DataSourceFactoryRegistry under the covers for you.
 
-If another implementation of DataSource is required, you can construct your own as shown below:
+```kotlin
+val db = Db(DbConfig(
+  type = "H2_INMEM",
+  username = "user",
+  password = "password",
+  databaseName = "dbName"
+))
+```
+
+See `DbConfig` for a full list of configuration options available.
+
+## Custom Database Types
+
+If another implementation of DataSource is required, you can register a custom "Type" to be set on `DbConfig` and build the 
+respective `DataSource` in a `DataSourceFactory` lambda as shown below.
+
+```kotlin
+DataSourceFactoryRegistry.registerDataSourceFactory("custom") {config: DbConfig ->
+  val fullConfig = config.copy(
+    jdbcUrl = "jdbc:custom:server//${config.host}:${config.port}/${config.databaseName}"
+  )
+  hikariDataSource(fullConfig)
+}
+```
+
+Or if you don't wish to use the `DbConfig` configuration class, a datasource can be constructed directly and injected into the 
+`Db` instance.
 
 ```kotlin
 val dataSource = JdbcDataSource()
@@ -99,6 +114,8 @@ dataSource.password = ""
 
 val db = Db(dataSource)
 ```
+
+
 
 # Methods
 ## executeQuery
@@ -678,3 +695,14 @@ Code reviews will look for consistency with existing code standards and naming c
 ### Testing standards
 
 All changes should include sufficient testing to prove it is working as intended.
+
+# Breaking version changes
+### `1.9.2` -> `2.0.0`
+**Breaking Change**: In the HttpServer.buildServer function, renamed the optional `overrideBasePath`
+parameter to `contractRoutesBasePath`.  If you're using `overrideBasePath` parameter, rename it
+to `contractRoutesBasePath`.  
+**Reason**: Originally contract routes were the only way to add routes. Eventually people wanted to
+be able to use the simpler route handlers, so we added the `routeHandlers` parameter. Those don't
+support a base path for some valid reasons, but that made the `overrideBasePath` parameter confusing.
+_Huh? I configured an `overrideBasePath` but it didn't affect my `routeHandlers` routes? :-(_
+So we renamed it to `contractRoutesBasePath` to clarify that it only affects contract routes.

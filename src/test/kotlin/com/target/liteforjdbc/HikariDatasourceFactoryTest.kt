@@ -7,25 +7,22 @@ class HikariDatasourceFactoryTest {
 
     @Test
     fun `Test dataSource`() {
-        val factory = HikariDatasourceFactory(
-            DbConfig(
-                type = DbType.POSTGRES,
-                host = "host",
-                port = 1234,
-                username = "user",
-                password = "password",
-                databaseName = "dbName",
-                ssl = true,
-                connectionTimeoutMillis = 1000,
-                idleTimeoutMillis = 2000,
-                keepAliveTime = 3000,
-                maxLifetime = 4000,
-                minimumIdle = 1,
-                maximumPoolSize = 10
-            )
+        val config = DbConfig(
+            type = DbType.POSTGRES,
+            jdbcUrl = "JDBC:",
+            username = "user",
+            password = "password",
+            databaseName = "dbName",
+            ssl = true,
+            connectionTimeoutMillis = 1000,
+            idleTimeoutMillis = 2000,
+            keepAliveTime = 3000,
+            maxLifetime = 4000,
+            minimumIdle = 1,
+            maximumPoolSize = 10
         )
 
-        val result = factory.dataSource("JDBC:")
+        val result = hikariDataSource(config)
 
         result.jdbcUrl shouldBe "JDBC:"
         result.connectionTimeout shouldBe 1000
