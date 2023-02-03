@@ -698,11 +698,7 @@ All changes should include sufficient testing to prove it is working as intended
 
 # Breaking version changes
 ### `1.9.2` -> `2.0.0`
-**Breaking Change**: In the HttpServer.buildServer function, renamed the optional `overrideBasePath`
-parameter to `contractRoutesBasePath`.  If you're using `overrideBasePath` parameter, rename it
-to `contractRoutesBasePath`.  
-**Reason**: Originally contract routes were the only way to add routes. Eventually people wanted to
-be able to use the simpler route handlers, so we added the `routeHandlers` parameter. Those don't
-support a base path for some valid reasons, but that made the `overrideBasePath` parameter confusing.
-_Huh? I configured an `overrideBasePath` but it didn't affect my `routeHandlers` routes? :-(_
-So we renamed it to `contractRoutesBasePath` to clarify that it only affects contract routes.
+**Breaking Change**: Changed the DataSourceFactory instance to a DataSourceFactoryRegistry object. 
+**Reason**: Originally only the statically configured DataSource types were supported due to the use of an 
+enum and a statically coded factory. This change was made so that users can modify the factory list to meet their
+individual needs. 
