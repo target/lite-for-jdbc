@@ -62,7 +62,7 @@ dependencies {
 
 The core of lite-for-jdbc is the Db class. A Db object is intended to be used as a singleton and
 injected as a dependency in repository classes. It requires a DataSource constructor argument,
-and there is a DataSourceFactoryRegistry to help with that.
+and there is a DataSourceFactory to help with that.
 The typical recommendation is to use Hikari, which is configured with reasonable defaults, but you can customize
 it to any DataSource.
 Examples:
