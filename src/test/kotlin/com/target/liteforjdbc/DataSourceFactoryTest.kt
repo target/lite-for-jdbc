@@ -7,7 +7,7 @@ import io.mockk.mockk
 import org.junit.jupiter.api.Test
 import javax.sql.DataSource
 
-class DataSourceFactoryRegistryTest {
+class DataSourceFactoryTest {
 
     @Test
     fun `Test Postgres`() {
