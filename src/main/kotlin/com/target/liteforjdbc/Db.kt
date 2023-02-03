@@ -2,7 +2,6 @@ package com.target.liteforjdbc
 
 import java.sql.Connection
 import java.sql.PreparedStatement
-import java.sql.ResultSet
 import javax.sql.DataSource
 
 /**
@@ -34,6 +33,8 @@ import javax.sql.DataSource
 open class Db(
     private val dataSource: DataSource,
 ) {
+
+    constructor(config: DbConfig) : this(DataSourceFactory.dataSource(config))
 
     /**
      * @see AutoCommit#executeUpdatePositionalParams
@@ -164,7 +165,7 @@ open class Db(
     /**
      * Checks for the health of the underlying DataSource
      *
-     * @return true if the datasource returns a functioning connection
+     * @return true if the dataSource returns a functioning connection
      */
     fun isDataSourceHealthy() = useConnection { !it.isClosed }
 

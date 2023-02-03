@@ -13,7 +13,7 @@ import java.time.Instant
 
 
 @Testcontainers
-class PostgresSqlIntegrationTest() {
+class PostgresSqlIntegrationTest {
     companion object {
         lateinit var db: Db
         var postgres: GenericContainer<*> = GenericContainer(DockerImageName.parse("postgres:15.1"))
@@ -33,10 +33,7 @@ class PostgresSqlIntegrationTest() {
                 password = "password",
                 databaseName = "test"
             )
-            println(dbConfig)
-
-            val dataSource = DatasourceFactory(dbConfig).dataSource()
-            db = Db(dataSource)
+            db = Db(dbConfig)
             // Now we have an address and port for Redis, no matter where it is running
             db.executeUpdate("CREATE TYPE annoyed_parent_type AS ENUM ( 'ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE' )")
             db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")
@@ -55,8 +52,6 @@ class PostgresSqlIntegrationTest() {
             postgres.stop()
         }
     }
-
-
 
 
     @Test
@@ -128,7 +123,13 @@ class PostgresSqlIntegrationTest() {
     fun testExecuteWithParams() {
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
-            mapOf("id" to 123, "field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.TWO)
+            mapOf(
+                "id" to 123,
+                "field1" to "Temp",
+                "field2" to 10,
+                "field3" to Instant.ofEpochMilli(0),
+                "annoyedParent" to AnnoyedParent.TWO
+            )
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
@@ -159,7 +160,12 @@ class PostgresSqlIntegrationTest() {
 
         val ids = db.executeWithGeneratedKeys(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
-            mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.THREE)
+            mapOf(
+                "field1" to "Temp",
+                "field2" to 10,
+                "field3" to Instant.ofEpochMilli(0),
+                "annoyedParent" to AnnoyedParent.THREE
+            )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
         val finalCount = tableKeyGenCount()
@@ -199,8 +205,18 @@ class PostgresSqlIntegrationTest() {
         val result = db.executeBatch(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO),
+                mapOf(
+                    "field1" to "Temp",
+                    "field2" to 10,
+                    "field3" to Instant.ofEpochMilli(0),
+                    "annoyedParent" to AnnoyedParent.ONE
+                ),
+                mapOf(
+                    "field1" to "Temp2",
+                    "field2" to 11,
+                    "field3" to Instant.ofEpochMilli(1),
+                    "annoyedParent" to AnnoyedParent.TWO
+                ),
             )
         )
 
@@ -220,8 +236,18 @@ class PostgresSqlIntegrationTest() {
         val result = db.executeBatch(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF),
+                mapOf(
+                    "field1" to "Temp",
+                    "field2" to 10,
+                    "field3" to Instant.ofEpochMilli(0),
+                    "annoyedParent" to AnnoyedParent.ONE
+                ),
+                mapOf(
+                    "field1" to "Temp2",
+                    "field2" to 11,
+                    "field3" to Instant.ofEpochMilli(1),
+                    "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF
+                ),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -309,8 +335,9 @@ class PostgresSqlIntegrationTest() {
     @Test
     fun testFindAll() {
         val result = db.findAll(
-            sql ="SELECT * FROM T ORDER BY field3",
-            rowMapper = modelResultSetMap)
+            sql = "SELECT * FROM T ORDER BY field3",
+            rowMapper = modelResultSetMap
+        )
 
         result.size shouldBe 3
         result[0]::class shouldBe Model::class
@@ -367,11 +394,13 @@ class PostgresSqlIntegrationTest() {
 
         newCount shouldBe originalCount + 1
 
-        val result = checkNotNull(db.executeQuery(
-            "SELECT * FROM T WHERE id = :id",
-            mapOf("id" to 100),
-            modelResultSetMap
-        ))
+        val result = checkNotNull(
+            db.executeQuery(
+                "SELECT * FROM T WHERE id = :id",
+                mapOf("id" to 100),
+                modelResultSetMap
+            )
+        )
 
         result shouldBe model
         result.field3 shouldBe Instant.ofEpochMilli(0)
@@ -401,7 +430,7 @@ class PostgresSqlIntegrationTest() {
     fun tableKeyGenIdByField1(field1Val: String): Int {
         return checkNotNull(db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
-            mapOf( "field1Val" to field1Val )
+            mapOf("field1Val" to field1Val)
         ) { resultSet -> resultSet.getInt("id") })
     }
 

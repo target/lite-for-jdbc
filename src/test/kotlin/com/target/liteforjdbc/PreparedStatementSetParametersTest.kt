@@ -6,6 +6,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import java.sql.JDBCType
 import java.sql.PreparedStatement
 import java.time.Instant
 import java.time.LocalDateTime
@@ -76,7 +77,7 @@ class PreparedStatementSetParametersTest {
 
     @Test
     fun testSetParameterForEnum() {
-        val value = DbType.POSTGRES
+        val value = JDBCType.VARCHAR
         preparedStatementProxy.setParameter(1, value)
 
         verify { mockPreparedStatement.setString(1, value.name) }

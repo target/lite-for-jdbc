@@ -1,15 +1,12 @@
 package com.target.liteforjdbc
 
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.sql.ResultSet
-import java.sql.ResultSetMetaData
-import java.time.*
 
 
 class ResultSetEnumTest {
