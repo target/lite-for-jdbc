@@ -19,7 +19,7 @@ class DataSourceFactoryRegistryTest {
             databaseName = "dbName"
         )
 
-        val result = DataSourceFactoryRegistry.dataSource(config) as HikariDataSource
+        val result = DataSourceFactory.dataSource(config) as HikariDataSource
 
         result.jdbcUrl shouldBe "jdbc:postgresql://host:5432/dbName"
     }
@@ -34,7 +34,7 @@ class DataSourceFactoryRegistryTest {
             databaseName = "dbName"
         )
 
-        val result = DataSourceFactoryRegistry.dataSource(config) as HikariDataSource
+        val result = DataSourceFactory.dataSource(config) as HikariDataSource
 
         result.jdbcUrl shouldBe "jdbc:h2:mem:dbName;DB_CLOSE_DELAY=-1;PASSWORD=password;USER=user"
     }
@@ -49,7 +49,7 @@ class DataSourceFactoryRegistryTest {
             databaseName = "./dbDir/dbFile"
         )
 
-        val result = DataSourceFactoryRegistry.dataSource(config) as HikariDataSource
+        val result = DataSourceFactory.dataSource(config) as HikariDataSource
 
         result.jdbcUrl shouldBe "jdbc:h2:file:./dbDir/dbFile;DB_CLOSE_DELAY=-1;PASSWORD=password;USER=user"
     }
@@ -64,11 +64,11 @@ class DataSourceFactoryRegistryTest {
         )
         val mockDataSource = mockk<DataSource>()
 
-        DataSourceFactoryRegistry.registerDataSourceFactory(typeName) {
+        DataSourceFactory.registerDataSourceBuilder(typeName) {
             mockDataSource
         }
 
-        val result = DataSourceFactoryRegistry.dataSource(config)
+        val result = DataSourceFactory.dataSource(config)
 
         result shouldBeSameInstanceAs mockDataSource
     }

@@ -1,17 +1,15 @@
 package com.target.liteforjdbc
 
-import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.throwables.shouldThrowWithMessage
-import io.kotest.extensions.system.withEnvironment
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 
-class PostgresDatasourceFactoryTest {
+class PostgresDataSourceFactoryTest {
 
     @Test
-    fun `Test buildPostgresDatasource no database`() {
+    fun `Test buildPostgresDataSource no database`() {
         val config = DbConfig(
             type = DbType.POSTGRES,
             host = "host",
@@ -22,12 +20,12 @@ class PostgresDatasourceFactoryTest {
         shouldThrowWithMessage<IllegalStateException>(
             "databaseName is required but was blank"
         ) {
-            buildPostgresDatasource(config)
+            buildPostgresDataSource(config)
         }
     }
 
     @Test
-    fun `Test buildPostgresDatasource no host`() {
+    fun `Test buildPostgresDataSource no host`() {
         val config = DbConfig(
             type = DbType.POSTGRES,
             host = "",
@@ -39,12 +37,12 @@ class PostgresDatasourceFactoryTest {
         shouldThrowWithMessage<IllegalStateException>(
             "host is required but was blank"
         ) {
-            buildPostgresDatasource(config)
+            buildPostgresDataSource(config)
         }
     }
 
     @Test
-    fun `Test buildPostgresDatasource wrong type`() {
+    fun `Test buildPostgresDataSource wrong type`() {
         val config = DbConfig(
             type = DbType.H2_FILE,
             databaseName = "dbName",
@@ -55,12 +53,12 @@ class PostgresDatasourceFactoryTest {
         shouldThrowWithMessage<IllegalStateException>(
             "type was expected to be \"POSTGRES\" but was \"H2_FILE\""
         ) {
-            buildPostgresDatasource(config)
+            buildPostgresDataSource(config)
         }
     }
 
     @Test
-    fun `Test buildPostgresDatasource with SSL`() {
+    fun `Test buildPostgresDataSource with SSL`() {
         val config = DbConfig(
             databaseName = "dbName",
             host = "host",
@@ -76,7 +74,7 @@ class PostgresDatasourceFactoryTest {
             maximumPoolSize = 10
         )
 
-        val result = buildPostgresDatasource(config)
+        val result = buildPostgresDataSource(config)
 
         result.jdbcUrl shouldBe "jdbc:postgresql://host:1234/dbName"
         result.connectionTimeout shouldBe 1000
@@ -96,7 +94,7 @@ class PostgresDatasourceFactoryTest {
     }
 
     @Test
-    fun `Test buildPostgresDatasource without SSL`() {
+    fun `Test buildPostgresDataSource without SSL`() {
         val config = DbConfig(
             databaseName = "dbName",
             host = "host",
@@ -112,7 +110,7 @@ class PostgresDatasourceFactoryTest {
             maximumPoolSize = 10
         )
 
-        val result = buildPostgresDatasource(config)
+        val result = buildPostgresDataSource(config)
 
         result.jdbcUrl shouldBe "jdbc:postgresql://host:1234/dbName"
         result.connectionTimeout shouldBe 1000

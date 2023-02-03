@@ -2,19 +2,16 @@ package com.target.liteforjdbc
 
 import com.zaxxer.hikari.HikariDataSource
 
-fun buildPostgresJdbcUrl(config: DbConfig): String {
+fun buildPostgresDataSource(config: DbConfig): HikariDataSource {
+    checkEqual(config.type, DbType.POSTGRES, "type")
     checkNotBlank(config.host, "host")
     checkNotBlank(config.databaseName, "databaseName")
-    return "jdbc:postgresql://${config.host}:${config.port}/${config.databaseName}"
-}
 
-fun buildPostgresDatasource(config: DbConfig): HikariDataSource {
-    checkEqual(config.type, DbType.POSTGRES, "type")
     val fullConfig = config.copy(
-        jdbcUrl = buildPostgresJdbcUrl(config)
+        jdbcUrl = "jdbc:postgresql://${config.host}:${config.port}/${config.databaseName}"
     )
 
-    val dataSource = hikariDataSource(fullConfig)
+    val dataSource = buildHikariDataSource(fullConfig)
     dataSource.addDataSourceProperty("reWriteBatchedInserts", "true")
 
     if (config.ssl) {

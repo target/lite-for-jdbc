@@ -3,23 +3,23 @@ package com.target.liteforjdbc
 import javax.sql.DataSource
 
 
-typealias DataSourceFactory = (DbConfig) -> DataSource
+typealias DataSourceBuilder = (DbConfig) -> DataSource
 
-object DataSourceFactoryRegistry {
+object DataSourceFactory {
     private val registry = mutableMapOf(
-        DbType.H2_INMEM to ::buildH2InMemDatasource as DataSourceFactory,
-        DbType.H2_FILE to ::buildH2FileDatasource as DataSourceFactory,
-        DbType.POSTGRES to ::buildPostgresDatasource as DataSourceFactory,
+        DbType.H2_INMEM to ::buildH2InMemDataSource as DataSourceBuilder,
+        DbType.H2_FILE to ::buildH2FileDataSource as DataSourceBuilder,
+        DbType.POSTGRES to ::buildPostgresDataSource as DataSourceBuilder,
     )
 
-    private fun getDataSourceFactory(config: DbConfig): DataSourceFactory {
+    private fun getDataSourceFactory(config: DbConfig): DataSourceBuilder {
         val key = config.type
         val entry = registry[key]
         checkNotNull(entry) { "$key isn't registered with DataSourceFactory. Registered List : ${registry.keys.joinToString(",")}"}
         return entry
     }
 
-    fun registerDataSourceFactory(type: String, entry: DataSourceFactory) {
+    fun registerDataSourceBuilder(type: String, entry: DataSourceBuilder) {
         registry[type] = entry
     }
 

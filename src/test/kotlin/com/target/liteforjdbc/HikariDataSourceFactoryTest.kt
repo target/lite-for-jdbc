@@ -3,7 +3,7 @@ package com.target.liteforjdbc
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
-class HikariDatasourceFactoryTest {
+class HikariDataSourceFactoryTest {
 
     @Test
     fun `Test dataSource`() {
@@ -22,7 +22,7 @@ class HikariDatasourceFactoryTest {
             maximumPoolSize = 10
         )
 
-        val result = hikariDataSource(config)
+        val result = buildHikariDataSource(config)
 
         result.jdbcUrl shouldBe "JDBC:"
         result.connectionTimeout shouldBe 1000

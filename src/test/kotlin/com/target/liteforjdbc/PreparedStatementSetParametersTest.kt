@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.sql.JDBCType
 import java.sql.PreparedStatement
-import java.sql.Types
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset

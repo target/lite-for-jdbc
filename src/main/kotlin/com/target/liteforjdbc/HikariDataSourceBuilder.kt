@@ -5,16 +5,11 @@ import com.zaxxer.hikari.HikariDataSource
 const val DATABASE_HOST_ENV_NAME = "DATABASE_HOST"
 
 /**
- * Datasource factory for Postgres connection via a Hikari pool.
- *
- * See the PostgresDatasourceFactory.Config implementation for default values
+ * DataSource factory for connections via a Hikari pool.
  */
 
-fun hikariDbConfigValidate(config: DbConfig) {
-    checkNotNull(config.jdbcUrl) { "JDBCUrl is required for Hikari Data Sources, but was null"}
-}
-fun hikariDataSource(config: DbConfig): HikariDataSource {
-    hikariDbConfigValidate(config)
+fun buildHikariDataSource(config: DbConfig): HikariDataSource {
+    checkNotNull(config.jdbcUrl) { "JDBCUrl is required for Hikari Data Sources, but was null" }
 
     val dataSource = HikariDataSource()
     dataSource.jdbcUrl = config.jdbcUrl

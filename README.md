@@ -1,48 +1,53 @@
 # lite-for-jdbc
+
 Lightweight library to help simplify JDBC database access. Main features:
+
 - Lets you use SQL statements with named parameters
 - Automates resource cleanup
 - Provides a functions for common database interaction patterns like individual and list result
   handling, updates, and batch statements
 
 <!-- TOC -->
+
 * [lite-for-jdbc](#lite-for-jdbc)
 * [Gradle Setup](#gradle-setup)
 * [Db Setup](#db-setup)
 * [Methods](#methods)
-  * [executeQuery](#executequery)
-  * [findAll](#findall)
-  * [executeUpdate](#executeupdate)
-  * [executeWithGeneratedKeys](#executewithgeneratedkeys)
-  * [executeBatch](#executebatch)
-  * [useNamedParamPreparedStatement](#usenamedparampreparedstatement)
-  * [useNamedParamPreparedStatementWithAutoGenKeys](#usenamedparampreparedstatementwithautogenkeys)
-  * [useConnection](#useconnection)
+    * [executeQuery](#executequery)
+    * [findAll](#findall)
+    * [executeUpdate](#executeupdate)
+    * [executeWithGeneratedKeys](#executewithgeneratedkeys)
+    * [executeBatch](#executebatch)
+    * [useNamedParamPreparedStatement](#usenamedparampreparedstatement)
+    * [useNamedParamPreparedStatementWithAutoGenKeys](#usenamedparampreparedstatementwithautogenkeys)
+    * [useConnection](#useconnection)
 * [Query Parameters](#query-parameters)
-  * [Named Parameters](#named-parameters)
-  * [Positional Params](#positional-params)
+    * [Named Parameters](#named-parameters)
+    * [Positional Params](#positional-params)
 * [Row Mapping](#row-mapping)
-  * [rowMapper](#rowmapper)
-  * [ResultSet extensions](#resultset-extensions)
-  * [Date Time in Postgresql](#date-time-in-postgresql)
-    * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
-  * [propertiesToMap](#propertiestomap)
+    * [rowMapper](#rowmapper)
+    * [ResultSet extensions](#resultset-extensions)
+    * [Date Time in Postgresql](#date-time-in-postgresql)
+        * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
+    * [propertiesToMap](#propertiestomap)
 * [Transactions & Autocommit](#transactions--autocommit)
-  * [withAutoCommit](#withautocommit)
-  * [withTransaction](#withtransaction)
-  * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
-  * [DataSource settings](#datasource-settings)
-  * [Testing with mockkTransaction](#testing-with-mockktransaction)
+    * [withAutoCommit](#withautocommit)
+    * [withTransaction](#withtransaction)
+    * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
+    * [DataSource settings](#datasource-settings)
+    * [Testing with mockkTransaction](#testing-with-mockktransaction)
 * [IntelliJ SQL language integration](#intellij-sql-language-integration)
 * [Development](#development)
-  * [Building](#building)
-  * [Issues](#issues)
-  * [Contributing](#contributing)
-    * [Code review standards](#code-review-standards)
-    * [Testing standards](#testing-standards)
+    * [Building](#building)
+    * [Issues](#issues)
+    * [Contributing](#contributing)
+        * [Code review standards](#code-review-standards)
+        * [Testing standards](#testing-standards)
+
 <!-- TOC -->
 
 # Gradle Setup
+
 ```kotlin
 repositories {
     mavenCentral()
@@ -62,7 +67,7 @@ The typical recommendation is to use Hikari, which is configured with reasonable
 it to any DataSource.
 Examples:
 
-Using DataSourceFactoryRegistry directly:
+Using DataSourceFactory:
 
 ```kotlin
 val config = DbConfig(
@@ -71,12 +76,12 @@ val config = DbConfig(
   password = "password",
   databaseName = "dbName"
 )
-val datasource = DataSourceFactoryRegistry.dataSource(config)
+val dataSource = DataSourceFactory.dataSource(config)
 
-val db = Db(datasource)
+val db = Db(dataSource)
 ```
 
-Or you can use the Db constructor that accepts a DbConfig directly. Db will use DataSourceFactoryRegistry under the covers for you.
+Or you can use the Db constructor that accepts a DbConfig directly. Db will use DataSourceFactory under the covers for you.
 
 ```kotlin
 val db = Db(DbConfig(
@@ -91,11 +96,11 @@ See `DbConfig` for a full list of configuration options available.
 
 ## Custom Database Types
 
-If another implementation of DataSource is required, you can register a custom "Type" to be set on `DbConfig` and build the 
-respective `DataSource` in a `DataSourceFactory` lambda as shown below.
+If another implementation of DataSource is required, you can register a custom "Type" to be set on `DbConfig` and build the
+respective `DataSource` in a `DataSourceBuilder` lambda as shown below.
 
 ```kotlin
-DataSourceFactoryRegistry.registerDataSourceFactory("custom") {config: DbConfig ->
+DataSourceFactory.registerDataSourceBuilder("custom") {config: DbConfig ->
   val fullConfig = config.copy(
     jdbcUrl = "jdbc:custom:server//${config.host}:${config.port}/${config.databaseName}"
   )
@@ -103,7 +108,7 @@ DataSourceFactoryRegistry.registerDataSourceFactory("custom") {config: DbConfig 
 }
 ```
 
-Or if you don't wish to use the `DbConfig` configuration class, a datasource can be constructed directly and injected into the 
+Or if you don't wish to use the `DbConfig` configuration class, a dataSource can be constructed directly and injected into the
 `Db` instance.
 
 ```kotlin
@@ -115,12 +120,11 @@ dataSource.password = ""
 val db = Db(dataSource)
 ```
 
-
-
 # Methods
+
 ## executeQuery
 
-```kotlin
+```
 executeQuery(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
@@ -144,6 +148,7 @@ val user: User? = db.executeQuery(
 
 If you have more than one method in your repository that needs to map a resultSet into the same domain object,
 it's typical to extract the mapper into a standalone function.
+
 ```kotlin
 val user: User?  = db.executeQuery(sql = "SELECT * FROM USERS WHERE id = :id",
   args = mapOf("id" to 86753),
@@ -172,7 +177,8 @@ val user: User = checkNotNull(
 ```
 
 ## findAll
-```kotlin
+
+```
 findAll(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
@@ -191,7 +197,8 @@ val adminUsers: List<User> = db.findAll(
 ```
 
 ## executeUpdate
-```kotlin
+
+```
 executeUpdate(
     sql: String, 
     args: Map<String, Any?> = mapOf()
@@ -211,7 +218,8 @@ println("$count row(s) inserted")
 Docs on the helper function [propertiesToMap](#propertiestomap)
 
 ## executeWithGeneratedKeys
-```kotlin
+
+```
 executeWithGeneratedKeys(
     sql: String, 
     args: Map<String, Any?> = mapOf(), 
@@ -237,7 +245,7 @@ val newModel = model.copy(id = results.first())
 
 ## executeBatch
 
-```kotlin
+```
 executeBatch(
     sql: String, 
     args: List<Map<String, Any?>>,
@@ -245,18 +253,18 @@ executeBatch(
 ): List<T>
 ```
 
-executeBatch is used to run the same SQL statement with different parameters in batch mode. 
+executeBatch is used to run the same SQL statement with different parameters in batch mode.
 This can give you significant performance improvements.
 
-Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters 
-for that execution. In the following example there will be two queries executed in a single batch. The first will 
+Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters
+for that execution. In the following example there will be two queries executed in a single batch. The first will
 insert model1, and the second will insert model2.
 
-RowMapper maps the results to the specified result type. 
+RowMapper maps the results to the specified result type.
 
 The response is a list of Objects of type `T`. Each object represents a batch query result. Most likely there will
 be one result per query execution. In the following example the results list has 2 elements. The first element  
-provides the generated ID of the model1 object, and the second element provides the generated ID of the model2 object. 
+provides the generated ID of the model1 object, and the second element provides the generated ID of the model2 object.
 
 ```kotlin
 val models = listOf(
@@ -273,7 +281,7 @@ val insertedIds = db.executeBatch(
 
 ## executeBatch Counts only
 
-```kotlin
+```
 executeBatch(
     sql: String, 
     args: List<Map<String, Any?>>
@@ -302,7 +310,8 @@ results.forEach { println("$it row(s) inserted")}
 ```
 
 ## useNamedParamPreparedStatement
-```kotlin
+
+```
 useNamedParamPreparedStatement(
     sql: String, 
     block: (NamedParamPreparedStatement) -> T
@@ -319,7 +328,8 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useNamedParamPreparedStatementWithAutoGenKeys
-```kotlin
+
+```
 useNamedParamPreparedStatementWithAutoGenKeys(
     sql: String, 
     block: (NamedParamPreparedStatement) -> T
@@ -336,11 +346,12 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useConnection
-```kotlin
-useConnection(block: (Connection) -> T): T
+
+```
+useConnection(block:(Connection) -> T): T
 ```
 
-useConnection is the lowest level method, and should only be used if you require direct access to the 
+useConnection is the lowest level method, and should only be used if you require direct access to the
 JDBC Connection. The connection will be created and cleaned up for you.
 
 # Query Parameters
@@ -355,31 +366,38 @@ parameters, call `executeQueryPositionalParams`.
 ## Named Parameters
 
 In your query, use a colon to indicate a named parameter.
+
 ```sql
 SELECT * FROM T WHERE field = :value1 OR field2 = :value2
 ```
 
 In the above example, invoking it would require a map defind like this
+
 ```kotlin
 mapOf("value1" to "string value", "value2" to 123)
 ```
 
 Named Parameters can NOT be mixed with positional parameters - doing so will result in an exception.
+
 ```sql
 -- ILLEGAL
 SELECT * FROM T WHERE field = :value1 OR field2 = ?
 ```
 
 Colons inside of quotes or double quotes will be ignored.
+
 ```sql
 SELECT * FROM T WHERE field = 'This will ignore the : in the string'
 ```
 
 If you need a colon in the SQL, escape it with a double colon.
+
 ```sql
 SELECT * FROM T WHERE field = ::systemVariableInOracle
 ```
+
 The above query will have no named paraemters, and the sql will translate INTO the following
+
 ```sql
 SELECT * FROM T WHERE field = :systemVariableInOracle
 ```
@@ -426,11 +444,9 @@ val results = db.findAll(sql = "SELECT * FROM model",
 )
 ```
 
-
 ## ResultSet extensions
 
 To facilitate mapping, ResultSet.get[Date/Time] extensions have been added to ResultSet.
-
 
 | Extension methods                   | Behavior of get                        | Behavior of set                                                |
 |-------------------------------------|----------------------------------------|----------------------------------------------------------------|
@@ -474,6 +490,7 @@ CREATE TABLE flight
   flight_depart_timezone  TEXT      NOT NULL
 )
 ```
+
 ```kotlin
 // Domain Class
  import java.time.ZoneIdconst 
@@ -529,7 +546,7 @@ propMap.containsKey("fieldOne") shoudlBe false
 
 And nameTransformer allows you to transform the keys in the map if you want to use named parameters that don't strictly
 match the field names on the domain class. For example, if you want the named parameters in your query to use snake case,
-you could use the method as shown below. 
+you could use the method as shown below.
 
 ```kotlin
 val propMap = model.propertiesToMap(nameTransformer = ::camelToSnakeCase)
@@ -573,7 +590,7 @@ will be closed.
 
 ## DataSource configuration & AutoCommit
 
-A datasource has a default setting for the autocommit flag which can be configured. But the individual connections can
+A dataSource has a default setting for the autocommit flag which can be configured. But the individual connections can
 be modified to change their autocommit flag. This will be done if the autocommit flag is set to be incompatible with the
 ConnectionSession being used. withTransaction requires a connection with autocommit set to false, and withAutoCommit
 requires a connection with autocommit set to true.
@@ -584,7 +601,7 @@ as there is a potential performance impact to changing that setting.
 
 ## DataSource settings
 
-If the datasource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
+If the dataSource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
 changed for the duration of that ConnectionSession
 
 ## Testing with mockkTransaction
@@ -623,7 +640,7 @@ confirmVerified(mockTransaction)
 
 All the query-related methods provided by this library use `sql` as the method parameter name for SQL.
 Using this pattern, you can add SQL language support to IntelliJ, which will then give you features
-like auto-completion, validation, and syntax highlighting.  To enable this, add or edit your
+like auto-completion, validation, and syntax highlighting. To enable this, add or edit your
 project's `.idea/IntelliLang.xml` file with this:
 
 ```xml
@@ -678,7 +695,6 @@ Lite for JDBC uses standard gradle tasks
 ./gradlew build
 ```
 
-
 ## Issues
 
 Report issues in the issues section of our repository
@@ -697,8 +713,10 @@ Code reviews will look for consistency with existing code standards and naming c
 All changes should include sufficient testing to prove it is working as intended.
 
 # Breaking version changes
+
 ### `1.9.2` -> `2.0.0`
-**Breaking Change**: Changed the DataSourceFactory instance to a DataSourceFactoryRegistry object. 
-**Reason**: Originally only the statically configured DataSource types were supported due to the use of an 
+
+**Breaking Change**: Changed the DataSourceFactory to a singleton object and the Type on DbConfig to a String.
+**Reason**: Originally only the statically configured DataSource types were supported due to the use of an
 enum and a statically coded factory. This change was made so that users can modify the factory list to meet their
 individual needs. 

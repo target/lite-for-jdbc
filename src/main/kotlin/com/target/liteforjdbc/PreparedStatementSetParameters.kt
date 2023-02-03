@@ -1,7 +1,6 @@
 package com.target.liteforjdbc
 
 import java.sql.PreparedStatement
-import java.sql.Types
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset

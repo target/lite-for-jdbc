@@ -1,13 +1,13 @@
 package com.target.liteforjdbc.integration
 
-import com.target.liteforjdbc.*
+import com.target.liteforjdbc.Db
+import com.target.liteforjdbc.DbConfig
+import com.target.liteforjdbc.DbType
+import com.target.liteforjdbc.propertiesToMap
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.sql.ResultSet
 import java.time.Instant
 
@@ -112,7 +112,13 @@ class H2IntegrationTest {
     fun testExecuteWithParams() {
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
-            mapOf("id" to 123, "field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.TWO)
+            mapOf(
+                "id" to 123,
+                "field1" to "Temp",
+                "field2" to 10,
+                "field3" to Instant.ofEpochMilli(0),
+                "annoyedParent" to AnnoyedParent.TWO
+            )
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
@@ -143,7 +149,12 @@ class H2IntegrationTest {
 
         val ids = db.executeWithGeneratedKeys(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
-            mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.THREE)
+            mapOf(
+                "field1" to "Temp",
+                "field2" to 10,
+                "field3" to Instant.ofEpochMilli(0),
+                "annoyedParent" to AnnoyedParent.THREE
+            )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
         val finalCount = tableKeyGenCount()
@@ -183,8 +194,18 @@ class H2IntegrationTest {
         val result = db.executeBatch(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO),
+                mapOf(
+                    "field1" to "Temp",
+                    "field2" to 10,
+                    "field3" to Instant.ofEpochMilli(0),
+                    "annoyedParent" to AnnoyedParent.ONE
+                ),
+                mapOf(
+                    "field1" to "Temp2",
+                    "field2" to 11,
+                    "field3" to Instant.ofEpochMilli(1),
+                    "annoyedParent" to AnnoyedParent.TWO
+                ),
             )
         )
 
@@ -204,8 +225,18 @@ class H2IntegrationTest {
         val result = db.executeBatch(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
-                mapOf("field1" to "Temp", "field2" to 10, "field3" to Instant.ofEpochMilli(0), "annoyedParent" to AnnoyedParent.ONE),
-                mapOf("field1" to "Temp2", "field2" to 11, "field3" to Instant.ofEpochMilli(1), "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF),
+                mapOf(
+                    "field1" to "Temp",
+                    "field2" to 10,
+                    "field3" to Instant.ofEpochMilli(0),
+                    "annoyedParent" to AnnoyedParent.ONE
+                ),
+                mapOf(
+                    "field1" to "Temp2",
+                    "field2" to 11,
+                    "field3" to Instant.ofEpochMilli(1),
+                    "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF
+                ),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -293,8 +324,9 @@ class H2IntegrationTest {
     @Test
     fun testFindAll() {
         val result = db.findAll(
-            sql ="SELECT * FROM T ORDER BY field3",
-            rowMapper = modelResultSetMap)
+            sql = "SELECT * FROM T ORDER BY field3",
+            rowMapper = modelResultSetMap
+        )
 
         result.size shouldBe 3
         result[0]::class shouldBe Model::class
@@ -351,11 +383,13 @@ class H2IntegrationTest {
 
         newCount shouldBe originalCount + 1
 
-        val result = checkNotNull(db.executeQuery(
-            "SELECT * FROM T WHERE id = :id",
-            mapOf("id" to 100),
-            modelResultSetMap
-        ))
+        val result = checkNotNull(
+            db.executeQuery(
+                "SELECT * FROM T WHERE id = :id",
+                mapOf("id" to 100),
+                modelResultSetMap
+            )
+        )
 
         result shouldBe model
         result.field3 shouldBe Instant.ofEpochMilli(0)
@@ -385,7 +419,7 @@ class H2IntegrationTest {
     fun tableKeyGenIdByField1(field1Val: String): Int {
         return checkNotNull(db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
-            mapOf( "field1Val" to field1Val )
+            mapOf("field1Val" to field1Val)
         ) { resultSet -> resultSet.getInt("id") })
     }
 

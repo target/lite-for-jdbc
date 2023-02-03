@@ -6,18 +6,18 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 
-class H2FileDatasourceFactoryTest {
+class H2FileDataSourceFactoryTest {
 
     @Test
     fun `Test calculateH2FileConfig valid`() {
         val config = DbConfig(
-                type = DbType.H2_FILE,
-                databaseName = "dbName",
-                username = "user",
-                password = "password",
-            )
+            type = DbType.H2_FILE,
+            databaseName = "dbName",
+            username = "user",
+            password = "password",
+        )
 
-        val result = buildH2FileDatasource(config) as HikariDataSource
+        val result = buildH2FileDataSource(config) as HikariDataSource
 
         result.jdbcUrl shouldBe "jdbc:h2:file:dbName;DB_CLOSE_DELAY=-1;PASSWORD=password;USER=user"
         result.username shouldBe "user"
@@ -36,7 +36,7 @@ class H2FileDatasourceFactoryTest {
         shouldThrowWithMessage<IllegalStateException>(
             "type was expected to be \"H2_FILE\" but was \"H2_INMEM\""
         ) {
-            buildH2FileDatasource(config)
+            buildH2FileDataSource(config)
         }
     }
 
