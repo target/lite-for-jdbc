@@ -65,7 +65,7 @@ fun PreparedStatement.setOffsetTime(index:Int, value: OffsetTime) {
 }
 
 /**
- * Sets instant by converting it to LocalDateTime, assuming the timezone is UTC.
+ * Sets a DbValue on the by using setObject and the corresponding values from DbValue
  */
 fun <T> PreparedStatement.setDbValue(index: Int, dbValue: DbValue<T>) {
     when (dbValue.type) {
