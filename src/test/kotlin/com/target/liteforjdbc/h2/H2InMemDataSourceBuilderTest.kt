@@ -1,12 +1,14 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.h2
 
+import com.target.liteforjdbc.DbConfig
+import com.target.liteforjdbc.DbType
 import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.throwables.shouldThrowWithMessage
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 
-class H2InMemDataSourceFactoryTest {
+class H2InMemDataSourceBuilderTest {
 
     @Test
     fun `Test calculateH2InMemConfig valid`() {

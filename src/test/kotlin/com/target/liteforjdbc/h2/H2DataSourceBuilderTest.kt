@@ -1,9 +1,11 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.h2
 
+import com.target.liteforjdbc.DbConfig
+import com.target.liteforjdbc.DbType
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
-class H2DataSourceFactoryTest {
+class H2DataSourceBuilderTest {
 
     @Test
     fun `Test buildH2JdbcUrl valid`() {

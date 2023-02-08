@@ -1,4 +1,6 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.h2
+
+import com.target.liteforjdbc.*
 
 fun buildH2JdbcUrl(config: DbConfig, jdbcTypePart: String): String {
     checkNotBlank(config.databaseName) { "config.databaseName is required for H2 dataSources" }

@@ -1,52 +1,67 @@
-package com.target.liteforjdbc.integration
+package com.target.liteforjdbc.postgres
 
-import com.target.liteforjdbc.Db
-import com.target.liteforjdbc.DbConfig
-import com.target.liteforjdbc.DbType
-import com.target.liteforjdbc.propertiesToMap
+import com.target.liteforjdbc.*
+import com.target.liteforjdbc.integration.AnnoyedParent
+import com.target.liteforjdbc.integration.Model
+import com.target.liteforjdbc.integration.countResultSetMap
+import com.target.liteforjdbc.integration.modelResultSetMap
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
 import java.sql.ResultSet
 import java.time.Instant
 
 
-class H2IntegrationTest {
-    lateinit var db: Db
+@Testcontainers
+class PostgresSqlIntegrationTest {
+    companion object {
+        lateinit var db: Db
+        var postgres: GenericContainer<*> = GenericContainer(DockerImageName.parse("postgres:15.1"))
+            .withExposedPorts(5432)
+            .withEnv("POSTGRES_DB", "test")
+            .withEnv("POSTGRES_PASSWORD", "password")
 
-    @BeforeEach
-    fun setupClass() {
-        val dbConfig = DbConfig(
-            type = DbType.H2_INMEM,
-            username = "user",
-            password = "password",
-            databaseName = "H2IntegrationTest"
-        )
+        @BeforeAll
+        @JvmStatic
+        fun setUp() {
+            postgres.start()
+            val dbConfig = DbConfig(
+                type = DbType.POSTGRES,
+                host = postgres.host,
+                port = postgres.firstMappedPort,
+                username = "postgres",
+                password = "password",
+                databaseName = "test"
+            )
+            db = Db(dbConfig)
+            // Now we have an address and port for Redis, no matter where it is running
+            db.executeUpdate("CREATE TYPE annoyed_parent_type AS ENUM ( 'ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE' )")
+            db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")
 
-        db = Db(dbConfig)
+            db.executeUpdate("CREATE TABLE KEY_GEN_T ( id SERIAL, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent annoyed_parent_type )")
 
-        // Setup
-        db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
 
-        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id INT AUTO_INCREMENT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
-        // Setup
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun tearDown() {
+            postgres.stop()
+        }
     }
 
-    @AfterEach
-    fun teardown() {
-        db.executeUpdate("DROP TABLE T")
-
-        db.executeUpdate("DROP TABLE KEY_GEN_T")
-    }
 
     @Test
     fun testUseConnection() {
         db.useConnection { conn ->
-            val ps = conn.prepareStatement("SHOW TABLES;")
+            val ps = conn.prepareStatement("SELECT * FROM pg_catalog.pg_tables;")
             val rs = ps.executeQuery()
             rs.next() shouldBe true
         }
@@ -54,7 +69,7 @@ class H2IntegrationTest {
 
     @Test
     fun testUsePreparedStatement() {
-        db.usePreparedStatement("SHOW TABLES;") { ps ->
+        db.usePreparedStatement("SELECT * FROM pg_catalog.pg_tables;") { ps ->
             val rs = ps.executeQuery()
             rs.next() shouldBe true
         }
@@ -99,7 +114,7 @@ class H2IntegrationTest {
             "Temp",
             10,
             Instant.ofEpochMilli(0),
-            AnnoyedParent.TWO
+            postgresEnumValue(AnnoyedParent.TWO),
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
         count shouldBe 1
@@ -117,7 +132,7 @@ class H2IntegrationTest {
                 "field1" to "Temp",
                 "field2" to 10,
                 "field3" to Instant.ofEpochMilli(0),
-                "annoyedParent" to AnnoyedParent.TWO
+                "annoyedParent" to postgresEnumValue(AnnoyedParent.TWO)
             )
         )
         var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
@@ -153,7 +168,7 @@ class H2IntegrationTest {
                 "field1" to "Temp",
                 "field2" to 10,
                 "field3" to Instant.ofEpochMilli(0),
-                "annoyedParent" to AnnoyedParent.THREE
+                "annoyedParent" to postgresEnumValue(AnnoyedParent.THREE)
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -174,7 +189,7 @@ class H2IntegrationTest {
         val ids = db.executeWithGeneratedKeysPositionalParams(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             { resultSet: ResultSet -> resultSet.getInt("id") },
-            "Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO_AND_A_HALF
+            "Temp", 10, Instant.ofEpochMilli(0), postgresEnumValue(AnnoyedParent.TWO_AND_A_HALF)
         )
 
         val finalCount = tableKeyGenCount()
@@ -198,13 +213,13 @@ class H2IntegrationTest {
                     "field1" to "Temp",
                     "field2" to 10,
                     "field3" to Instant.ofEpochMilli(0),
-                    "annoyedParent" to AnnoyedParent.ONE
+                    "annoyedParent" to postgresEnumValue(AnnoyedParent.ONE)
                 ),
                 mapOf(
                     "field1" to "Temp2",
                     "field2" to 11,
                     "field3" to Instant.ofEpochMilli(1),
-                    "annoyedParent" to AnnoyedParent.TWO
+                    "annoyedParent" to postgresEnumValue(AnnoyedParent.TWO)
                 ),
             )
         )
@@ -212,10 +227,10 @@ class H2IntegrationTest {
         val finalCount = tableKeyGenCount()
         clearKeyGenTable()
 
-        result.size shouldBe 2
-        result[0] shouldBe 1
-        result[1] shouldBe 1
         finalCount shouldBe 2
+        result.size shouldBe 2
+        result[0] shouldBe -2
+        result[1] shouldBe -2
     }
 
     @Test
@@ -229,13 +244,13 @@ class H2IntegrationTest {
                     "field1" to "Temp",
                     "field2" to 10,
                     "field3" to Instant.ofEpochMilli(0),
-                    "annoyedParent" to AnnoyedParent.ONE
+                    "annoyedParent" to postgresEnumValue(AnnoyedParent.ONE)
                 ),
                 mapOf(
                     "field1" to "Temp2",
                     "field2" to 11,
                     "field3" to Instant.ofEpochMilli(1),
-                    "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF
+                    "annoyedParent" to postgresEnumValue(AnnoyedParent.TWO_AND_A_HALF)
                 ),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
@@ -258,18 +273,18 @@ class H2IntegrationTest {
         val rowCounts = db.executeBatchPositionalParams(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
-                listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO),
-                listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO_AND_A_HALF),
+                listOf("Temp", 10, Instant.ofEpochMilli(0), postgresEnumValue(AnnoyedParent.TWO)),
+                listOf("Temp2", 11, Instant.ofEpochMilli(1), postgresEnumValue(AnnoyedParent.TWO_AND_A_HALF)),
             )
         )
 
         val finalCount = tableKeyGenCount()
         clearKeyGenTable()
 
-        rowCounts.size shouldBe 2
-        rowCounts[0] shouldBe 1
-        rowCounts[0] shouldBe 1
         finalCount shouldBe 2
+        rowCounts.size shouldBe 2
+        rowCounts[0] shouldBe -2
+        rowCounts[0] shouldBe -2
     }
 
     @Test
@@ -279,8 +294,8 @@ class H2IntegrationTest {
         val result = db.executeBatchPositionalParams(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
-                listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.ONE),
-                listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO),
+                listOf("Temp", 10, Instant.ofEpochMilli(0), postgresEnumValue(AnnoyedParent.ONE)),
+                listOf("Temp2", 11, Instant.ofEpochMilli(1), postgresEnumValue(AnnoyedParent.TWO)),
             )
         ) { resultSet: ResultSet -> resultSet.getInt("id") }
 
@@ -289,10 +304,10 @@ class H2IntegrationTest {
         val expectedId2 = tableKeyGenIdByField1("Temp2")
         clearKeyGenTable()
 
+        finalCount shouldBe 2
         result.size shouldBe 2
         result[0] shouldBe expectedId1
         result[1] shouldBe expectedId2
-        finalCount shouldBe 2
     }
 
     @Test
@@ -376,7 +391,11 @@ class H2IntegrationTest {
         val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
-            model.propertiesToMap()
+            model.propertiesToMap(
+                override = mapOf(
+                    "annoyedParent" to postgresEnumValue(model.annoyedParent)
+                )
+            )
         )
 
         val newCount = tableCount()
@@ -405,19 +424,22 @@ class H2IntegrationTest {
     }
 
     fun tableCount(): Int {
-        return checkNotNull(db.executeQuery(
+        return checkNotNull(
+            db.executeQuery(
             "SELECT COUNT(*) cnt FROM T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
     fun tableKeyGenCount(): Int {
-        return checkNotNull(db.executeQuery(
+        return checkNotNull(
+            db.executeQuery(
             "SELECT COUNT(*) cnt FROM KEY_GEN_T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
     fun tableKeyGenIdByField1(field1Val: String): Int {
-        return checkNotNull(db.executeQuery(
+        return checkNotNull(
+            db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
             mapOf("field1Val" to field1Val)
         ) { resultSet -> resultSet.getInt("id") })

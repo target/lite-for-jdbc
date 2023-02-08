@@ -1,5 +1,6 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.h2
 
+import com.target.liteforjdbc.*
 import javax.sql.DataSource
 
 fun buildH2FileDataSource(config: DbConfig): DataSource {
