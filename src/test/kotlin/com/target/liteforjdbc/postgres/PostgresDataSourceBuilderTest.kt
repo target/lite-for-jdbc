@@ -1,12 +1,14 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.postgres
 
+import com.target.liteforjdbc.DbConfig
+import com.target.liteforjdbc.DbType
 import io.kotest.assertions.throwables.shouldThrowWithMessage
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 
-class PostgresDataSourceFactoryTest {
+class PostgresDataSourceBuilderTest {
 
     @Test
     fun `Test buildPostgresDataSource no database`() {

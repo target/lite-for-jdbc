@@ -26,7 +26,7 @@ Lightweight library to help simplify JDBC database access. Main features:
     * [Positional Params](#positional-params)
 * [Row Mapping](#row-mapping)
     * [rowMapper](#rowmapper)
-    * [ResultSet extensions](#resultset-extensions)
+    * [ResultSet/PreparedStatement extensions](#resultsetpreparedstatement-extensions)
     * [Date Time in Postgresql](#date-time-in-postgresql)
         * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
     * [propertiesToMap](#propertiestomap)
@@ -444,19 +444,21 @@ val results = db.findAll(sql = "SELECT * FROM model",
 )
 ```
 
-## ResultSet extensions
+## ResultSet/PreparedStatement extensions
 
-To facilitate mapping, ResultSet.get[Date/Time] extensions have been added to ResultSet.
+To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have been added.
 
-| Extension methods                   | Behavior of get                        | Behavior of set                                                |
-|-------------------------------------|----------------------------------------|----------------------------------------------------------------|
-| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC)) |
-| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                    |
-| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                        |
-| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                        |
-| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                   |
-| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                       |                                      
-| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                 |
+| Extension methods                   | Behavior of ResultSet.get              | Behavior of PreparedStatement.set                               |
+|-------------------------------------|----------------------------------------|-----------------------------------------------------------------|
+| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC))  |
+| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                     |
+| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                         |
+| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                         |
+| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                    |
+| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                        |                                      
+| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                  |
+| setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
+
 
 ## Date Time in Postgresql
 
@@ -537,14 +539,14 @@ domain into a map to then be used as named parameters.
 val propMap = model.propertiesToMap()
 ```
 
-Two optional parameters exist to fine tune the process. exclude will skip certain fields when creating the map.
+Three optional parameters exist to fine tune the process. exclude will skip certain fields when creating the map.
 
 ```kotlin
 val propMap = model.propertiesToMap(exclude = listOf("fieldOne"))
 propMap.containsKey("fieldOne") shoudlBe false
 ```
 
-And nameTransformer allows you to transform the keys in the map if you want to use named parameters that don't strictly
+`nameTransformer` allows you to transform the keys in the map if you want to use named parameters that don't strictly
 match the field names on the domain class. For example, if you want the named parameters in your query to use snake case,
 you could use the method as shown below.
 
@@ -552,6 +554,14 @@ you could use the method as shown below.
 val propMap = model.propertiesToMap(nameTransformer = ::camelToSnakeCase)
 propMap.containsKey("field_one") shoudlBe true
 propMap.containsKey("fieldOne") shoudlBe false
+```
+
+`override` will override the values for specific key provided. If this is paired with the
+`nameTransformer`, you should match the transformed name (not the field name).
+
+```kotlin
+val propMap = model.propertiesToMap(override = mapOf("fieldOne" to "Override"))
+propMap["fieldOne"] shoudlBe "Override"
 ```
 
 # Transactions & Autocommit

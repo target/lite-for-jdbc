@@ -1,5 +1,6 @@
-package com.target.liteforjdbc
+package com.target.liteforjdbc.postgres
 
+import com.target.liteforjdbc.*
 import com.zaxxer.hikari.HikariDataSource
 
 fun buildPostgresDataSource(config: DbConfig): HikariDataSource {

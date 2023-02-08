@@ -1,5 +1,8 @@
 package com.target.liteforjdbc
 
+import com.target.liteforjdbc.h2.buildH2FileDataSource
+import com.target.liteforjdbc.h2.buildH2InMemDataSource
+import com.target.liteforjdbc.postgres.buildPostgresDataSource
 import javax.sql.DataSource
 
 
