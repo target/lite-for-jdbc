@@ -1,63 +1,56 @@
-package com.target.liteforjdbc.integration
+package com.target.liteforjdbc.h2
 
-import com.target.liteforjdbc.*
+import com.target.liteforjdbc.Db
+import com.target.liteforjdbc.DbConfig
+import com.target.liteforjdbc.DbType
+import com.target.liteforjdbc.integration.AnnoyedParent
+import com.target.liteforjdbc.integration.Model
+import com.target.liteforjdbc.integration.countResultSetMap
+import com.target.liteforjdbc.integration.modelResultSetMap
+import com.target.liteforjdbc.propertiesToMap
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import java.sql.ResultSet
 import java.time.Instant
 
 
-@Testcontainers
-class PostgresSqlIntegrationTest {
-    companion object {
-        lateinit var db: Db
-        var postgres: GenericContainer<*> = GenericContainer(DockerImageName.parse("postgres:15.1"))
-            .withExposedPorts(5432)
-            .withEnv("POSTGRES_DB", "test")
-            .withEnv("POSTGRES_PASSWORD", "password")
+class H2IntegrationTest {
+    lateinit var db: Db
 
-        @BeforeAll
-        @JvmStatic
-        fun setUp() {
-            postgres.start()
-            val dbConfig = DbConfig(
-                type = DbType.POSTGRES,
-                host = postgres.host,
-                port = postgres.firstMappedPort,
-                username = "postgres",
-                password = "password",
-                databaseName = "test"
-            )
-            db = Db(dbConfig)
-            // Now we have an address and port for Redis, no matter where it is running
-            db.executeUpdate("CREATE TYPE annoyed_parent_type AS ENUM ( 'ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE' )")
-            db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")
+    @BeforeEach
+    fun setupClass() {
+        val dbConfig = DbConfig(
+            type = DbType.H2_INMEM,
+            username = "user",
+            password = "password",
+            databaseName = "H2IntegrationTest"
+        )
 
-            db.executeUpdate("CREATE TABLE KEY_GEN_T ( id SERIAL, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent annoyed_parent_type )")
+        db = Db(dbConfig)
 
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
+        // Setup
+        db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
 
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun tearDown() {
-            postgres.stop()
-        }
+        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id INT AUTO_INCREMENT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
+        // Setup
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
     }
 
+    @AfterEach
+    fun teardown() {
+        db.executeUpdate("DROP TABLE T")
+
+        db.executeUpdate("DROP TABLE KEY_GEN_T")
+    }
 
     @Test
     fun testUseConnection() {
         db.useConnection { conn ->
-            val ps = conn.prepareStatement("SELECT * FROM pg_catalog.pg_tables;")
+            val ps = conn.prepareStatement("SHOW TABLES;")
             val rs = ps.executeQuery()
             rs.next() shouldBe true
         }
@@ -65,7 +58,7 @@ class PostgresSqlIntegrationTest {
 
     @Test
     fun testUsePreparedStatement() {
-        db.usePreparedStatement("SELECT * FROM pg_catalog.pg_tables;") { ps ->
+        db.usePreparedStatement("SHOW TABLES;") { ps ->
             val rs = ps.executeQuery()
             rs.next() shouldBe true
         }
@@ -105,7 +98,7 @@ class PostgresSqlIntegrationTest {
     @Test
     fun testExecuteUpdatePositionalParams() {
         db.executeUpdatePositionalParams(
-            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?, ?::annoyed_parent_type)",
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?, ?)",
             123,
             "Temp",
             10,
@@ -122,7 +115,7 @@ class PostgresSqlIntegrationTest {
     @Test
     fun testExecuteWithParams() {
         db.executeUpdate(
-            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             mapOf(
                 "id" to 123,
                 "field1" to "Temp",
@@ -159,7 +152,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val ids = db.executeWithGeneratedKeys(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             mapOf(
                 "field1" to "Temp",
                 "field2" to 10,
@@ -183,7 +176,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val ids = db.executeWithGeneratedKeysPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?::annoyed_parent_type)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             { resultSet: ResultSet -> resultSet.getInt("id") },
             "Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO_AND_A_HALF
         )
@@ -203,7 +196,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatch(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
                 mapOf(
                     "field1" to "Temp",
@@ -223,10 +216,10 @@ class PostgresSqlIntegrationTest {
         val finalCount = tableKeyGenCount()
         clearKeyGenTable()
 
-        finalCount shouldBe 2
         result.size shouldBe 2
-        result[0] shouldBe -2
-        result[1] shouldBe -2
+        result[0] shouldBe 1
+        result[1] shouldBe 1
+        finalCount shouldBe 2
     }
 
     @Test
@@ -234,7 +227,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatch(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (:field1, :field2, :field3, :annoyedParent)",
             listOf(
                 mapOf(
                     "field1" to "Temp",
@@ -267,7 +260,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val rowCounts = db.executeBatchPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, CAST(? as annoyed_parent_type))",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
                 listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO),
                 listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO_AND_A_HALF),
@@ -277,10 +270,10 @@ class PostgresSqlIntegrationTest {
         val finalCount = tableKeyGenCount()
         clearKeyGenTable()
 
-        finalCount shouldBe 2
         rowCounts.size shouldBe 2
-        rowCounts[0] shouldBe -2
-        rowCounts[0] shouldBe -2
+        rowCounts[0] shouldBe 1
+        rowCounts[0] shouldBe 1
+        finalCount shouldBe 2
     }
 
     @Test
@@ -288,7 +281,7 @@ class PostgresSqlIntegrationTest {
         clearKeyGenTable()
 
         val result = db.executeBatchPositionalParams(
-            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?::annoyed_parent_type)",
+            "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
             listOf(
                 listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.ONE),
                 listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO),
@@ -300,10 +293,10 @@ class PostgresSqlIntegrationTest {
         val expectedId2 = tableKeyGenIdByField1("Temp2")
         clearKeyGenTable()
 
-        finalCount shouldBe 2
         result.size shouldBe 2
         result[0] shouldBe expectedId1
         result[1] shouldBe expectedId2
+        finalCount shouldBe 2
     }
 
     @Test
@@ -386,7 +379,7 @@ class PostgresSqlIntegrationTest {
 
         val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
         db.executeUpdate(
-            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, CAST(:annoyedParent as annoyed_parent_type))",
+            "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             model.propertiesToMap()
         )
 

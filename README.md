@@ -444,19 +444,21 @@ val results = db.findAll(sql = "SELECT * FROM model",
 )
 ```
 
-## ResultSet extensions
+## ResultSet/PreparedStatement extensions
 
-To facilitate mapping, ResultSet.get[Date/Time] extensions have been added to ResultSet.
+To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have been added.
 
-| Extension methods                   | Behavior of get                        | Behavior of set                                                |
-|-------------------------------------|----------------------------------------|----------------------------------------------------------------|
-| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC)) |
-| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                    |
-| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                        |
-| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                        |
-| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                   |
-| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                       |                                      
-| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                 |
+| Extension methods                   | Behavior of ResultSet.get              | Behavior of PreparedStatement.set                               |
+|-------------------------------------|----------------------------------------|-----------------------------------------------------------------|
+| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC))  |
+| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                     |
+| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                         |
+| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                         |
+| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                    |
+| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                        |                                      
+| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                  |
+| setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
+
 
 ## Date Time in Postgresql
 

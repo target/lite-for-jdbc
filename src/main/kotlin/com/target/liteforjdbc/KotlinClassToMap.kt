@@ -14,9 +14,12 @@ fun camelToSnakeCase(name: String) = camelRegex.replace(name) {
     "_${it.value}"
 }.lowercase()
 
+fun finalName(prop: KProperty1<Any, Any?>, nameTransformer: NameTransformer): Any? = nameTransformer(prop.name)
+
 fun Any.propertiesToMap(
     exclude: Collection<String> = emptyList(),
-    nameTransformer: NameTransformer = ::NO_OP
+    nameTransformer: NameTransformer = ::NO_OP,
+    override: Map<String, Any?> = emptyMap()
 ): Map<String, Any?> {
     val props = this::class.memberProperties
         .filter {
@@ -26,5 +29,15 @@ fun Any.propertiesToMap(
             @Suppress("UNCHECKED_CAST")
             it as KProperty1<Any, Any?>
         }
-    return props.associateBy({ nameTransformer(it.name) }, { it.get(this) })
+    return props.associateBy(
+        {
+            nameTransformer(it.name)
+        }, {
+            val name = nameTransformer(it.name)
+            if (override.containsKey(name)) {
+                override[name]
+            } else {
+                it.get(this)
+            }
+        })
 }

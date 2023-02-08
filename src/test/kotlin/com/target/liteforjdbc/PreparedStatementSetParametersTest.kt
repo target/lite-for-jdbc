@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.sql.JDBCType
 import java.sql.PreparedStatement
+import java.sql.SQLType
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -81,6 +82,31 @@ class PreparedStatementSetParametersTest {
         preparedStatementProxy.setParameter(1, value)
 
         verify { mockPreparedStatement.setString(1, value.name) }
+    }
+
+    @Test
+    fun testSetDbValue() {
+        val value = BigDecimal("10.1234")
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL)))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL, 4) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, IntParameterType(JDBCType.DECIMAL.vendorTypeNumber)))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL.vendorTypeNumber) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, IntParameterType(JDBCType.DECIMAL.vendorTypeNumber), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL.vendorTypeNumber, 4) }
+    }
+
+    @Test
+    fun testSetParameterForDbValue() {
+        val value = BigDecimal("10.1234")
+
+        preparedStatementProxy.setParameter(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL, 4) }
     }
 
     @Test
