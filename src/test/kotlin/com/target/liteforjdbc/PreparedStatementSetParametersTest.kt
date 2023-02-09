@@ -19,18 +19,15 @@ class PreparedStatementSetParametersTest {
     @MockK(relaxed = true)
     lateinit var mockPreparedStatement: PreparedStatement
 
-    private lateinit var preparedStatementProxy: PreparedStatementProxy
-
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
-        preparedStatementProxy = PreparedStatementProxy(mockPreparedStatement)
     }
 
     @Test
     fun testSetParameterForString() {
         val value = "test"
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }
@@ -38,7 +35,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForLong() {
         val value = 10L
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }
@@ -46,7 +43,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForInt() {
         val value = 10
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }
@@ -54,7 +51,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForDouble() {
         val value = 10.0
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }
@@ -62,7 +59,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForZonedDateTime() {
         val value = ZonedDateTime.now()
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value.toOffsetDateTime()) }
     }
@@ -70,7 +67,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForInstant() {
         val value = Instant.now()
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, LocalDateTime.ofInstant(value, ZoneOffset.UTC)) }
     }
@@ -78,7 +75,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForEnum() {
         val value = JDBCType.VARCHAR
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setString(1, value.name) }
     }
@@ -86,7 +83,7 @@ class PreparedStatementSetParametersTest {
     @Test
     fun testSetParameterForObject() {
         val value = BigDecimal("10")
-        preparedStatementProxy.setParameter(1, value)
+        mockPreparedStatement.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }
@@ -100,7 +97,7 @@ class PreparedStatementSetParametersTest {
         val timeVal = ZonedDateTime.now()
         val objectVal = BigDecimal("10.123456")
 
-        preparedStatementProxy.setParameters(stringVal, longVal, doubleVal, instantVal, timeVal, objectVal)
+        mockPreparedStatement.setParameters(stringVal, longVal, doubleVal, instantVal, timeVal, objectVal)
 
         verify { mockPreparedStatement.setObject(1, stringVal) }
         verify { mockPreparedStatement.setObject(2, longVal) }
