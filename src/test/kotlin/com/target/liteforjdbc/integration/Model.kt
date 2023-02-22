@@ -2,11 +2,13 @@ package com.target.liteforjdbc.integration
 
 import com.target.liteforjdbc.getEnum
 import com.target.liteforjdbc.getInstant
+import com.target.liteforjdbc.getUUID
 import java.sql.ResultSet
 import java.time.Instant
+import java.util.UUID
 
 data class Model(
-    val id: Int,
+    val id: UUID,
     val field1: String,
     val field2: Int,
     val field3: Instant,
@@ -23,7 +25,7 @@ enum class AnnoyedParent {
 val modelResultSetMap = { resultSet: ResultSet ->
     resultSet.run {
         Model(
-            id = getInt("id"),
+            id = checkNotNull(getUUID("id")),
             field1 = getString("field1"),
             field2 = getInt("field2"),
             field3 = checkNotNull(getInstant("field3")),

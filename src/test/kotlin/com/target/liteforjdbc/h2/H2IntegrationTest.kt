@@ -1,23 +1,22 @@
 package com.target.liteforjdbc.h2
 
-import com.target.liteforjdbc.Db
-import com.target.liteforjdbc.DbConfig
-import com.target.liteforjdbc.DbType
+import com.target.liteforjdbc.*
 import com.target.liteforjdbc.integration.AnnoyedParent
 import com.target.liteforjdbc.integration.Model
 import com.target.liteforjdbc.integration.countResultSetMap
 import com.target.liteforjdbc.integration.modelResultSetMap
-import com.target.liteforjdbc.propertiesToMap
+import com.target.liteforjdbc.postgres.PostgresSqlIntegrationTest
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.sql.ResultSet
 import java.time.Instant
-
+import java.util.*
 
 class H2IntegrationTest {
     lateinit var db: Db
+    val knownUUIDList = mutableListOf<UUID>()
 
     @BeforeEach
     fun setupClass() {
@@ -31,13 +30,19 @@ class H2IntegrationTest {
         db = Db(dbConfig)
 
         // Setup
-        db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
+        db.executeUpdate("CREATE TABLE T ( id UUID default random_uuid(), field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
 
-        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id INT AUTO_INCREMENT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
+        db.executeUpdate("CREATE TABLE KEY_GEN_T ( id UUID default random_uuid(), field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent ENUM('ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE') )")
         // Setup
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
-        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
+        val firstUUID = UUID.randomUUID()
+        knownUUIDList.add(firstUUID)
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$firstUUID', 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
+        val secondUUID = UUID.randomUUID()
+        knownUUIDList.add(secondUUID)
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$secondUUID', 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
+        val thirdUUID = UUID.randomUUID()
+        knownUUIDList.add(thirdUUID)
+        db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$thirdUUID', 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
     }
 
     @AfterEach
@@ -67,7 +72,7 @@ class H2IntegrationTest {
     @Test
     fun testUseNamedParamPreparedStatement() {
         db.useNamedParamPreparedStatement("SELECT * FROM T WHERE id = :id") { ps ->
-            ps.setInt("id", 1)
+            ps.setUUID("id", knownUUIDList[0])
             val rs = ps.executeQuery()
             rs.next() shouldBe true
             val field1Val = rs.getString("field1")
@@ -77,11 +82,12 @@ class H2IntegrationTest {
 
     @Test
     fun testExecuteUpdate() {
-        db.executeUpdate("INSERT INTO T (id, field1, field2, annoyed_parent) VALUES (123, 'Temp', 10, 'ONE')")
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        val id = UUID.randomUUID()
+        db.executeUpdate("INSERT INTO T (id, field1, field2, annoyed_parent) VALUES ('$id', 'Temp', 10, 'ONE')")
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id", args = mapOf("id" to id), rowMapper = countResultSetMap)
         count shouldBe 1
-        db.executeUpdate("DELETE FROM T WHERE id = 123")
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        db.executeUpdate("DELETE FROM T WHERE id = :id", args = mapOf("id" to id))
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id", args = mapOf("id" to id), rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
@@ -89,7 +95,7 @@ class H2IntegrationTest {
     fun `a reused named parameter should populate all ordinal parameters`() {
         val count = db.executeQuery(
             sql = "SELECT COUNT(*) cnt FROM T WHERE id = :id and id = :id",
-            args = mapOf("id" to 1),
+            args = mapOf("id" to knownUUIDList[0]),
             rowMapper = countResultSetMap
         )
         count shouldBe 1
@@ -97,40 +103,50 @@ class H2IntegrationTest {
 
     @Test
     fun testExecuteUpdatePositionalParams() {
+        val id = UUID.randomUUID()
         db.executeUpdatePositionalParams(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?, ?)",
-            123,
+            id,
             "Temp",
             10,
             Instant.ofEpochMilli(0),
             AnnoyedParent.TWO
         )
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 1
-        db.executeUpdatePositionalParams("DELETE FROM T WHERE id = ?", 123)
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        db.executeUpdatePositionalParams("DELETE FROM T WHERE id = ?", id)
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
     @Test
     fun testExecuteWithParams() {
+        val id = UUID.randomUUID()
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             mapOf(
-                "id" to 123,
+                "id" to id,
                 "field1" to "Temp",
                 "field2" to 10,
                 "field3" to Instant.ofEpochMilli(0),
                 "annoyedParent" to AnnoyedParent.TWO
             )
         )
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 1
         db.executeUpdate(
             "DELETE FROM T WHERE id = :id",
-            mapOf("id" to 123)
+            mapOf("id" to id)
         )
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
@@ -159,7 +175,7 @@ class H2IntegrationTest {
                 "field3" to Instant.ofEpochMilli(0),
                 "annoyedParent" to AnnoyedParent.THREE
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
 
@@ -177,7 +193,7 @@ class H2IntegrationTest {
 
         val ids = db.executeWithGeneratedKeysPositionalParams(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
-            { resultSet: ResultSet -> resultSet.getInt("id") },
+            { resultSet: ResultSet -> resultSet.getUUID("id") },
             "Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.TWO_AND_A_HALF
         )
 
@@ -242,7 +258,7 @@ class H2IntegrationTest {
                     "annoyedParent" to AnnoyedParent.TWO_AND_A_HALF
                 ),
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
         val expectedId1 = tableKeyGenIdByField1("Temp")
@@ -286,7 +302,7 @@ class H2IntegrationTest {
                 listOf("Temp", 10, Instant.ofEpochMilli(0), AnnoyedParent.ONE),
                 listOf("Temp2", 11, Instant.ofEpochMilli(1), AnnoyedParent.TWO),
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
         val expectedId1 = tableKeyGenIdByField1("Temp")
@@ -334,15 +350,15 @@ class H2IntegrationTest {
 
         result.size shouldBe 3
         result[0]::class shouldBe Model::class
-        result[0].id shouldBe 1
+        result[0].id shouldBe knownUUIDList[0]
         result[0].field3 shouldBe Instant.ofEpochMilli(0)
         result[0].annoyedParent shouldBe AnnoyedParent.ONE
         result[1]::class shouldBe Model::class
-        result[1].id shouldBe 2
+        result[1].id shouldBe knownUUIDList[1]
         result[1].field3 shouldBe Instant.ofEpochMilli(1000)
         result[1].annoyedParent shouldBe AnnoyedParent.TWO
         result[2]::class shouldBe Model::class
-        result[2].id shouldBe 3
+        result[2].id shouldBe knownUUIDList[2]
         result[2].field3 shouldBe Instant.ofEpochMilli(2000)
         result[2].annoyedParent shouldBe AnnoyedParent.TWO_AND_A_HALF
 
@@ -377,7 +393,7 @@ class H2IntegrationTest {
     fun testSaveAndDelete() {
         val originalCount = tableCount()
 
-        val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
+        val model = Model(UUID.randomUUID(), "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             model.propertiesToMap()
@@ -390,7 +406,7 @@ class H2IntegrationTest {
         val result = checkNotNull(
             db.executeQuery(
                 "SELECT * FROM T WHERE id = :id",
-                mapOf("id" to 100),
+                mapOf("id" to model.id),
                 modelResultSetMap
             )
         )
@@ -420,11 +436,11 @@ class H2IntegrationTest {
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
-    fun tableKeyGenIdByField1(field1Val: String): Int {
+    fun tableKeyGenIdByField1(field1Val: String): UUID {
         return checkNotNull(db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
             mapOf("field1Val" to field1Val)
-        ) { resultSet -> resultSet.getInt("id") })
+        ) { resultSet -> resultSet.getUUID("id") })
     }
 
     fun clearKeyGenTable() {

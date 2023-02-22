@@ -10,6 +10,7 @@ import java.sql.JDBCType
 import java.sql.PreparedStatement
 import java.sql.SQLType
 import java.time.*
+import java.util.*
 
 
 class PreparedStatementSetParametersTest {
@@ -77,6 +78,14 @@ class PreparedStatementSetParametersTest {
     fun testSetLocalDateTime() {
         val value = LocalDateTime.now()
         preparedStatementProxy.setLocalDateTime(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetUUID() {
+        val value = UUID.randomUUID()
+        preparedStatementProxy.setUUID(1, value)
 
         verify { mockPreparedStatement.setObject(1, value) }
     }

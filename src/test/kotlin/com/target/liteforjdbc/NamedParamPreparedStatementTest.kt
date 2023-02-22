@@ -16,10 +16,7 @@ import java.net.URL
 import java.sql.*
 import java.sql.Array
 import java.sql.Date
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.time.*
 import java.util.*
 
 
@@ -572,4 +569,75 @@ class NamedParamPreparedStatementTest {
         verify { mockPreparedStatement.setObject(1, value, type) }
     }
 
+    @Test
+    fun testSetUUID() {
+        val value = UUID.randomUUID()
+        preparedStatement.setUUID("field-1", value)
+
+        verify { mockPreparedStatement.setUUID(1, value) }
+    }
+
+    @Test
+    fun testSetZonedDateTime() {
+        val value = ZonedDateTime.now()
+        preparedStatement.setZonedDateTime("field-1", value)
+
+        verify { mockPreparedStatement.setZonedDateTime(1, value) }
+    }
+
+    @Test
+    fun testSetInstant() {
+        val value = Instant.now()
+        preparedStatement.setInstant("field-1", value)
+
+        verify { mockPreparedStatement.setInstant(1, value) }
+    }
+
+    @Test
+    fun testSetLocalDateTime() {
+        val value = LocalDateTime.now()
+        preparedStatement.setLocalDateTime("field-1", value)
+
+        verify { mockPreparedStatement.setLocalDateTime(1, value) }
+    }
+
+    @Test
+    fun testSetLocalDate() {
+        val value = LocalDate.now()
+        preparedStatement.setLocalDate("field-1", value)
+
+        verify { mockPreparedStatement.setLocalDate(1, value) }
+    }
+
+    @Test
+    fun testSetLocalTime() {
+        val value = LocalTime.now()
+        preparedStatement.setLocalTime("field-1", value)
+
+        verify { mockPreparedStatement.setLocalTime(1, value) }
+    }
+
+    @Test
+    fun testSetOffsetDateTime() {
+        val value = OffsetDateTime.now()
+        preparedStatement.setOffsetDateTime("field-1", value)
+
+        verify { mockPreparedStatement.setOffsetDateTime(1, value) }
+    }
+
+    @Test
+    fun testSetOffsetTime() {
+        val value = OffsetTime.now()
+        preparedStatement.setOffsetTime("field-1", value)
+
+        verify { mockPreparedStatement.setOffsetTime(1, value) }
+    }
+
+    @Test
+    fun testSetDbValue() {
+        val value = DbValue("value", SqlParameterType(JDBCType.VARCHAR))
+        preparedStatement.setDbValue("field-1", value)
+
+        verify { mockPreparedStatement.setDbValue(1, value) }
+    }
 }
