@@ -6,6 +6,7 @@ import java.math.BigDecimal
 import java.net.URL
 import java.sql.*
 import java.sql.Date
+import java.time.*
 import java.util.*
 
 /**
@@ -405,6 +406,60 @@ class NamedParamPreparedStatement(
     fun setObject(parameterKey: String, value: Any?, targetSqlType: SQLType?) {
         getIndexes(parameterKey).forEach {
             preparedStatement.setObject(it, value, targetSqlType)
+        }
+    }
+
+    fun setUUID(parameterKey: String, uuid: UUID) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setUUID(it, uuid)
+        }
+    }
+
+    fun setZonedDateTime(parameterKey: String, dateTime: ZonedDateTime) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setZonedDateTime(it, dateTime)
+        }
+    }
+
+    fun setInstant(parameterKey: String, instant: Instant) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setInstant(it, instant)
+        }
+    }
+
+    fun setLocalDateTime(parameterKey: String, value: LocalDateTime) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setLocalDateTime(it, value)
+        }
+    }
+
+    fun setLocalDate(parameterKey: String, value: LocalDate) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setLocalDate(it, value)
+        }
+    }
+
+    fun setLocalTime(parameterKey: String, value: LocalTime) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setLocalTime(it, value)
+        }
+    }
+
+    fun setOffsetDateTime(parameterKey: String, value: OffsetDateTime) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setOffsetDateTime(it, value)
+        }
+    }
+
+    fun setOffsetTime(parameterKey: String, value: OffsetTime) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setOffsetTime(it, value)
+        }
+    }
+
+    fun <T> setDbValue(parameterKey: String, value: DbValue<T>) {
+        getIndexes(parameterKey).forEach {
+            preparedStatement.setDbValue(it, value)
         }
     }
 

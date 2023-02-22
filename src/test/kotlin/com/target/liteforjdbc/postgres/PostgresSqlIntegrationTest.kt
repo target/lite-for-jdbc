@@ -14,8 +14,9 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.sql.ResultSet
 import java.time.Instant
+import java.util.UUID
 
-
+private val knownUUIDList = mutableListOf<UUID>()
 @Testcontainers
 class PostgresSqlIntegrationTest {
     companion object {
@@ -38,15 +39,22 @@ class PostgresSqlIntegrationTest {
                 databaseName = "test"
             )
             db = Db(dbConfig)
+            db.executeUpdate("CREATE EXTENSION \"uuid-ossp\"")
             // Now we have an address and port for Redis, no matter where it is running
             db.executeUpdate("CREATE TYPE annoyed_parent_type AS ENUM ( 'ONE', 'TWO', 'TWO_AND_A_HALF', 'THREE' )")
-            db.executeUpdate("CREATE TABLE T ( id INT, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")
+            db.executeUpdate("CREATE TABLE T ( id UUID primary key, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP, annoyed_parent annoyed_parent_type )")
 
-            db.executeUpdate("CREATE TABLE KEY_GEN_T ( id SERIAL, field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent annoyed_parent_type )")
+            db.executeUpdate("CREATE TABLE KEY_GEN_T ( id UUID NOT NULL DEFAULT uuid_generate_v1(), field1 VARCHAR(255), field2 INT, field3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP, annoyed_parent annoyed_parent_type )")
 
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (1, 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (2, 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
-            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (3, 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
+            val firstUUID = UUID.randomUUID()
+            knownUUIDList.add(firstUUID)
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$firstUUID', 'First', 10, TIMESTAMP '1970-01-01 00:00:00', 'ONE')")
+            val secondUUID = UUID.randomUUID()
+            knownUUIDList.add(secondUUID)
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$secondUUID', 'Second', 20, TIMESTAMP '1970-01-01 00:00:01', 'TWO')")
+            val thirdUUID = UUID.randomUUID()
+            knownUUIDList.add(thirdUUID)
+            db.executeUpdate("INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES ('$thirdUUID', 'Third', 30, TIMESTAMP '1970-01-01 00:00:02', 'TWO_AND_A_HALF')")
 
         }
 
@@ -78,7 +86,7 @@ class PostgresSqlIntegrationTest {
     @Test
     fun testUseNamedParamPreparedStatement() {
         db.useNamedParamPreparedStatement("SELECT * FROM T WHERE id = :id") { ps ->
-            ps.setInt("id", 1)
+            ps.setUUID("id", knownUUIDList[0])
             val rs = ps.executeQuery()
             rs.next() shouldBe true
             val field1Val = rs.getString("field1")
@@ -88,11 +96,12 @@ class PostgresSqlIntegrationTest {
 
     @Test
     fun testExecuteUpdate() {
-        db.executeUpdate("INSERT INTO T (id, field1, field2, annoyed_parent) VALUES (123, 'Temp', 10, 'ONE')")
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        val uuid = UUID.randomUUID()
+        db.executeUpdate("INSERT INTO T (id, field1, field2, annoyed_parent) VALUES ('$uuid', 'Temp', 10, 'ONE')")
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = '$uuid'", rowMapper = countResultSetMap)
         count shouldBe 1
-        db.executeUpdate("DELETE FROM T WHERE id = 123")
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        db.executeUpdate("DELETE FROM T WHERE id = '$uuid'")
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = '$uuid'", rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
@@ -100,7 +109,7 @@ class PostgresSqlIntegrationTest {
     fun `a reused named parameter should populate all ordinal parameters`() {
         val count = db.executeQuery(
             sql = "SELECT COUNT(*) cnt FROM T WHERE id = :id and id = :id",
-            args = mapOf("id" to 1),
+            args = mapOf("id" to knownUUIDList[0]),
             rowMapper = countResultSetMap
         )
         count shouldBe 1
@@ -108,40 +117,50 @@ class PostgresSqlIntegrationTest {
 
     @Test
     fun testExecuteUpdatePositionalParams() {
+        val uuid = UUID.randomUUID()
         db.executeUpdatePositionalParams(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?, ?)",
-            123,
+            uuid,
             "Temp",
             10,
             Instant.ofEpochMilli(0),
             postgresEnumValue(AnnoyedParent.TWO),
         )
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to uuid),
+            rowMapper = countResultSetMap)
         count shouldBe 1
-        db.executeUpdatePositionalParams("DELETE FROM T WHERE id = ?", 123)
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        db.executeUpdatePositionalParams("DELETE FROM T WHERE id = ?", uuid)
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to uuid),
+            rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
     @Test
     fun testExecuteWithParams() {
+        val id = UUID.randomUUID()
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             mapOf(
-                "id" to 123,
+                "id" to id,
                 "field1" to "Temp",
                 "field2" to 10,
                 "field3" to Instant.ofEpochMilli(0),
                 "annoyedParent" to postgresEnumValue(AnnoyedParent.TWO)
             )
         )
-        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        var count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 1
         db.executeUpdate(
             "DELETE FROM T WHERE id = :id",
-            mapOf("id" to 123)
+            mapOf("id" to id)
         )
-        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = 123", rowMapper = countResultSetMap)
+        count = db.executeQuery("SELECT COUNT(*) cnt FROM T WHERE id = :id",
+            args = mapOf("id" to id),
+            rowMapper = countResultSetMap)
         count shouldBe 0
     }
 
@@ -170,7 +189,7 @@ class PostgresSqlIntegrationTest {
                 "field3" to Instant.ofEpochMilli(0),
                 "annoyedParent" to postgresEnumValue(AnnoyedParent.THREE)
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
 
@@ -188,7 +207,7 @@ class PostgresSqlIntegrationTest {
 
         val ids = db.executeWithGeneratedKeysPositionalParams(
             "INSERT INTO KEY_GEN_T (field1, field2, field3, annoyed_parent) VALUES (?, ?, ?, ?)",
-            { resultSet: ResultSet -> resultSet.getInt("id") },
+            { resultSet: ResultSet -> resultSet.getUUID("id") },
             "Temp", 10, Instant.ofEpochMilli(0), postgresEnumValue(AnnoyedParent.TWO_AND_A_HALF)
         )
 
@@ -253,7 +272,7 @@ class PostgresSqlIntegrationTest {
                     "annoyedParent" to postgresEnumValue(AnnoyedParent.TWO_AND_A_HALF)
                 ),
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
         val expectedId1 = tableKeyGenIdByField1("Temp")
@@ -297,7 +316,7 @@ class PostgresSqlIntegrationTest {
                 listOf("Temp", 10, Instant.ofEpochMilli(0), postgresEnumValue(AnnoyedParent.ONE)),
                 listOf("Temp2", 11, Instant.ofEpochMilli(1), postgresEnumValue(AnnoyedParent.TWO)),
             )
-        ) { resultSet: ResultSet -> resultSet.getInt("id") }
+        ) { resultSet: ResultSet -> resultSet.getUUID("id") }
 
         val finalCount = tableKeyGenCount()
         val expectedId1 = tableKeyGenIdByField1("Temp")
@@ -345,15 +364,15 @@ class PostgresSqlIntegrationTest {
 
         result.size shouldBe 3
         result[0]::class shouldBe Model::class
-        result[0].id shouldBe 1
+        result[0].id shouldBe knownUUIDList[0]
         result[0].field3 shouldBe Instant.ofEpochMilli(0)
         result[0].annoyedParent shouldBe AnnoyedParent.ONE
         result[1]::class shouldBe Model::class
-        result[1].id shouldBe 2
+        result[1].id shouldBe knownUUIDList[1]
         result[1].field3 shouldBe Instant.ofEpochMilli(1000)
         result[1].annoyedParent shouldBe AnnoyedParent.TWO
         result[2]::class shouldBe Model::class
-        result[2].id shouldBe 3
+        result[2].id shouldBe knownUUIDList[2]
         result[2].field3 shouldBe Instant.ofEpochMilli(2000)
         result[2].annoyedParent shouldBe AnnoyedParent.TWO_AND_A_HALF
 
@@ -388,7 +407,7 @@ class PostgresSqlIntegrationTest {
     fun testSaveAndDelete() {
         val originalCount = tableCount()
 
-        val model = Model(100, "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
+        val model = Model(UUID.randomUUID(), "testName", 1000, Instant.ofEpochMilli(0), AnnoyedParent.TWO)
         db.executeUpdate(
             "INSERT INTO T (id, field1, field2, field3, annoyed_parent) VALUES (:id, :field1, :field2, :field3, :annoyedParent)",
             model.propertiesToMap(
@@ -405,7 +424,7 @@ class PostgresSqlIntegrationTest {
         val result = checkNotNull(
             db.executeQuery(
                 "SELECT * FROM T WHERE id = :id",
-                mapOf("id" to 100),
+                mapOf("id" to model.id),
                 modelResultSetMap
             )
         )
@@ -423,29 +442,29 @@ class PostgresSqlIntegrationTest {
         finalCount shouldBe originalCount
     }
 
-    fun tableCount(): Int {
+    private fun tableCount(): Int {
         return checkNotNull(
             db.executeQuery(
             "SELECT COUNT(*) cnt FROM T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
-    fun tableKeyGenCount(): Int {
+    private fun tableKeyGenCount(): Int {
         return checkNotNull(
             db.executeQuery(
             "SELECT COUNT(*) cnt FROM KEY_GEN_T"
         ) { resultSet -> resultSet.getInt("cnt") })
     }
 
-    fun tableKeyGenIdByField1(field1Val: String): Int {
+    private fun tableKeyGenIdByField1(field1Val: String): UUID {
         return checkNotNull(
             db.executeQuery(
             "SELECT id FROM KEY_GEN_T WHERE field1 = :field1Val",
             mapOf("field1Val" to field1Val)
-        ) { resultSet -> resultSet.getInt("id") })
+        ) { resultSet -> resultSet.getUUID("id") })
     }
 
-    fun clearKeyGenTable() {
+    private fun clearKeyGenTable() {
         db.executeUpdate("DELETE FROM KEY_GEN_T")
     }
 

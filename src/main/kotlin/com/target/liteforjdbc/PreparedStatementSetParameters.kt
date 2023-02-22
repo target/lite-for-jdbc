@@ -2,6 +2,7 @@ package com.target.liteforjdbc
 
 import java.sql.PreparedStatement
 import java.time.*
+import java.util.UUID
 
 /**
  * Sets all parameters provided in order, using setObject
@@ -13,6 +14,13 @@ fun PreparedStatement.setParameters(vararg args: Any?) {
         val statementIndex = i + 1
         setParameter(statementIndex, arg)
     }
+}
+
+/**
+    Type safe set for UUID parameter.
+ */
+fun PreparedStatement.setUUID(index: Int, uuid: UUID) {
+    setObject(index, uuid)
 }
 
 /**
