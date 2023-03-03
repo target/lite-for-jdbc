@@ -54,7 +54,7 @@ repositories {
 }
 
 dependencies {
-    api("com.target:lite-for-jdbc:2.1.0")
+    api("com.target:lite-for-jdbc:2.1.1")
 }
 ```
 
