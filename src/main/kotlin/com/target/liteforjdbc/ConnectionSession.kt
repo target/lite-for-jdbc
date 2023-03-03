@@ -233,7 +233,7 @@ sealed class ConnectionSession(
         while (resultSet.next()) {
             result.add(rowMapper.invoke(resultSet))
         }
-        return result.toList()
+        return result
     }
 
     private fun <T> callInternalPositionalParams(sql: String, action: (pstmt: PreparedStatement) -> T, vararg args: Any?): T =

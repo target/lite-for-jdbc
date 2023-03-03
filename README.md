@@ -457,6 +457,7 @@ To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have b
 | getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                    |
 | getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                        |                                      
 | getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                  |
+| getUUID/setUUID                     | getObject(c, UUID)                     | setObject(c, UUID)                                              |
 | setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
 
 
