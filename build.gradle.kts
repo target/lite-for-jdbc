@@ -3,12 +3,14 @@ repositories {
     mavenCentral()
 }
 
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    kotlin("jvm")
+    kotlin("jvm") version libs.versions.kotlin.get()
     `java-library`
     `maven-publish`
     signing
-    id("io.github.gradle-nexus.publish-plugin")
+    alias(libs.plugins.versions)
+    alias(libs.plugins.nexusPublishPlugin)
     id("java-test-fixtures")
 }
 
@@ -16,50 +18,31 @@ group = "com.target"
 
 dependencies {
 
-    val kotlinReflectVersion: String by project
-    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinReflectVersion")
+    implementation(libs.kotlinReflect)
 
-    val hikariCPVersion: String by project
-    implementation("com.zaxxer:HikariCP:$hikariCPVersion")
+    implementation(libs.hikariCP)
 
-    val logbackVersion: String by project
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
-    val kotlinLoggingVersion: String by project
-    implementation("io.github.microutils:kotlin-logging-jvm:$kotlinLoggingVersion")
-    val slf4jVersion: String by project
-    implementation("org.slf4j:slf4j-api:$slf4jVersion")
+    implementation(libs.kotlinLogging)
 
-    val healthMonitorInterfaceVersion: String by project
-    api("com.target:health-monitor-interface:$healthMonitorInterfaceVersion")
+    api(libs.healthMonitorInterface)
 
-    val mockkVersion: String by project
-    testFixturesApi("io.mockk:mockk:$mockkVersion")
+    testFixturesApi(libs.mockk)
 
-    val junitVersion: String by project
-    testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    val kotestVersion: String by project
-    testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
-    testImplementation("io.kotest:kotest-property:$kotestVersion")
-    testImplementation("io.kotest:kotest-extensions:$kotestVersion")
-    testImplementation("io.mockk:mockk:$mockkVersion")
-    val testContainersVersion: String by project
-    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
-    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+    testImplementation(libs.bundles.testing)
 
-    val postgresqlVersion: String by project
-    testImplementation("org.postgresql:postgresql:$postgresqlVersion")
+    testImplementation(libs.bundles.testContainers)
 
-    val h2Version: String by project
-    testApi("com.h2database:h2:$h2Version")
+    testImplementation(libs.postgresql)
+
+    testApi(libs.h2)
 }
 
 val jvmTargetVersion: String by project
+
 tasks {
-    compileJava { options.release.set(jvmTargetVersion.toInt()) }
-    compileKotlin { kotlinOptions { jvmTarget = jvmTargetVersion } }
-    compileTestKotlin { kotlinOptions { jvmTarget = jvmTargetVersion } }
+    // This line configures the target JVM version. For applications, it's typically the latest LTS version.
+    // For libraries, it's typically the earliest LTS version.
+    java { toolchain { languageVersion.set(JavaLanguageVersion.of(jvmTargetVersion)) } }
 
     withType<Test> {
         useJUnitPlatform()
