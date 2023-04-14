@@ -1,0 +1,48 @@
+[versions]
+kotlin = "1.8.10"
+
+kotlinLogging = "3.0.5"
+
+versionsPlugin = "0.46.0"
+nexusPublishPlugin = "1.3.0"
+
+hikariCP = "5.0.1"
+healthMonitorInterface = "1.2.0"
+
+jupiter = "5.9.2"
+kotest = "5.5.5"
+mockk = "1.13.4"
+testContainers = "1.17.6"
+postgresql = "42.5.4"
+h2 = "2.1.214"
+
+[libraries]
+kotlinLogging = { module = "io.github.microutils:kotlin-logging-jvm", version.ref = "kotlinLogging" }
+
+kotlinReflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
+hikariCP = { module = "com.zaxxer:HikariCP", version.ref = "hikariCP" }
+healthMonitorInterface = { module = "com.target:health-monitor-interface", version.ref = "healthMonitorInterface" }
+
+jupiterApi = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "jupiter" }
+jupiterEngine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "jupiter" }
+jupiterParams = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "jupiter" }
+kotestAssertionsCore = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotestJunit5= { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotestProperty = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+kotestAssertionsJson = { module = "io.kotest:kotest-assertions-json", version.ref = "kotest" }
+kotestExtensions = { module = "io.kotest:kotest-extensions", version.ref = "kotest" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+testContainers = { module = "org.testcontainers:testcontainers", version.ref = "testContainers" }
+testContainersJunit = { module = "org.testcontainers:junit-jupiter", version.ref = "testContainers" }
+
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
+
+[bundles]
+testing = ["jupiterApi", "jupiterEngine", "jupiterParams", "kotestAssertionsCore", "kotestJunit5", "kotestProperty", "kotestAssertionsJson", "kotestExtensions", "mockk"]
+testContainers = ["testContainers", "testContainersJunit"]
+
+[plugins]
+versions = { id = "com.github.ben-manes.versions", version.ref = "versionsPlugin" }
+nexusPublishPlugin = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexusPublishPlugin" }
