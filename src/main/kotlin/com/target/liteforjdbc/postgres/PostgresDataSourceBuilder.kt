@@ -21,5 +21,7 @@ fun buildPostgresDataSource(config: DbConfig): HikariDataSource {
         dataSource.addDataSourceProperty("sslmode", "require")
     }
 
+    dataSource.addDataSourceProperty("targetServerType", config.targetServerType.jdbcParameterValue)
+
     return dataSource
 }
