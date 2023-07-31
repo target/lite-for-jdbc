@@ -23,5 +23,11 @@ fun buildHikariDataSource(config: DbConfig): HikariDataSource {
     dataSource.username = config.username
     dataSource.password = config.password
 
+    config.dataSourceProperties.forEach { dataSourceProperty ->
+        dataSourceProperty.apply {
+            dataSource.addDataSourceProperty(propertyName, propertyValue)
+        }
+    }
+
     return dataSource
 }
