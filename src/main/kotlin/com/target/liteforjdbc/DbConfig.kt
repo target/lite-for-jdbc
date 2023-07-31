@@ -21,4 +21,5 @@ data class DbConfig(
     val maxLifetime: Long = 300_000,
     val minimumIdle: Int = 1,
     val maximumPoolSize: Int = 5,
+    val dataSourceProperties: List<DataSourceProperty> = listOf(),
 )

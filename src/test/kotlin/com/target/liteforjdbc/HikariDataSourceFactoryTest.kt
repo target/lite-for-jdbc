@@ -19,7 +19,11 @@ class HikariDataSourceFactoryTest {
             keepAliveTime = 3000,
             maxLifetime = 4000,
             minimumIdle = 1,
-            maximumPoolSize = 10
+            maximumPoolSize = 10,
+            dataSourceProperties = listOf(
+                DataSourceProperty("propName", "propValue"),
+                DataSourceProperty("otherPropName", "otherPropValue")
+            )
         )
 
         val result = buildHikariDataSource(config)
@@ -34,6 +38,9 @@ class HikariDataSourceFactoryTest {
 
         result.username shouldBe "user"
         result.password shouldBe "password"
+        result.dataSourceProperties.size shouldBe 2
+        result.dataSourceProperties.getProperty("propName") shouldBe "propValue"
+        result.dataSourceProperties.getProperty("otherPropName") shouldBe "otherPropValue"
     }
 
 }
