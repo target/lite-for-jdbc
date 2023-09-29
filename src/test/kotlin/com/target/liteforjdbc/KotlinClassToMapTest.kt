@@ -106,6 +106,19 @@ class KotlinClassToMapTest {
     }
 
     @Test
+    fun `propertiesToMap handles Instant`() {
+        val value = TimedEvent(
+            description = "Sample",
+            occurredAt = Instant.ofEpochSecond(12L)
+        )
+        val result = value.propertiesToMap()
+        result shouldNotBe null
+        result.size shouldBe 2
+        result["description"] shouldBe "Sample"
+        result["occurredAt"] shouldBe LocalDateTime.of(1970, 1, 1, 0, 0, 12)
+    }
+
+    @Test
     fun `toJdbcValue handles null`() {
         toJdbcValue(null) shouldBe null
     }
@@ -125,5 +138,10 @@ class KotlinClassToMapTest {
         val realyRealyLongPropertyNameThatShouldntExistButByTestingThisWeShouldBeSafe: String,
         val `value's name has special chars`: Long,
         val nullable: Any? = null,
+    )
+
+    data class TimedEvent(
+        val description: String,
+        val occurredAt: Instant
     )
 }
