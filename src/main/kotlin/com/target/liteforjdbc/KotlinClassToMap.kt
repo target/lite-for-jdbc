@@ -35,11 +35,13 @@ fun Any.propertiesToMap(
             nameTransformer(it.name)
         }, {
             val name = nameTransformer(it.name)
-            if (override.containsKey(name)) {
-                override[name]
-            } else {
-                it.get(this)
-            }
+            toJdbcValue(
+                if (override.containsKey(name)) {
+                    override[name]
+                } else {
+                    it.get(this)
+                }
+            )
         })
 }
 
