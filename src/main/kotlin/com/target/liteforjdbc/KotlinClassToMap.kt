@@ -1,5 +1,8 @@
 package com.target.liteforjdbc
 
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -38,4 +41,9 @@ fun Any.propertiesToMap(
                 it.get(this)
             }
         })
+}
+
+fun Any.toJdbcValue(value: Any?) = when(value) {
+    is Instant -> LocalDateTime.ofInstant(value, ZoneOffset.UTC)
+    else -> value
 }

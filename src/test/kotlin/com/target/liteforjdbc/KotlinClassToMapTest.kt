@@ -3,6 +3,8 @@ package com.target.liteforjdbc
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Test
+import java.time.Instant
+import java.time.LocalDateTime
 
 class KotlinClassToMapTest {
 
@@ -101,6 +103,21 @@ class KotlinClassToMapTest {
         result["realyRealyLongPropertyNameThatShouldntExistButByTestingThisWeShouldBeSafe"] shouldBe "string"
         result["value's name has special chars"] shouldBe 10L
         result["nullable"] shouldBe "Null"
+    }
+
+    @Test
+    fun `toJdbcValue handles null`() {
+        toJdbcValue(null) shouldBe null
+    }
+
+    @Test
+    fun `toJdbcValue keeps value as is if it's not Instant`() {
+        toJdbcValue("Anything") shouldBe "Anything"
+    }
+
+    @Test
+    fun `toJdbcValue converts Instant to LocalDateTime`() {
+        toJdbcValue(Instant.ofEpochSecond(12L)) shouldBe LocalDateTime.of(1970, 1, 1, 0, 0, 12)
     }
 
     private data class Domain1(
