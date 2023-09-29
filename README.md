@@ -461,17 +461,19 @@ To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have b
 | setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
 
 
-## Date Time in Postgresql
+## Java type to Postgresql column type mapping requirements
 
-| Type            | Postgresql Type | Description                                         | Example fields          |
-|-----------------|-----------------|-----------------------------------------------------|-------------------------|
-| Instant         | Timestamp       | A moment in time without a time zone                | created_timestamp       |
-| LocalDateTime   | Timestamp       | A date/time without considering time zones          | ?                       |
-| LocalDate       | Date            | A day with no time or time zone information         | product_launch_date     |
-| LocalTime       | Time            | A time of day without date or time zone information | ?                       |
-| OffsetDateTime  | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp |
-| OffsetTime      | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time         |
-| ZonedDateTime   | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp |
+The following table shows the Java type to Postgresql column type pairing that should be used with lite-for-jdbc.
+
+| Java Type      | Postgresql Type | Description                                         | Example fields             |
+|----------------|-----------------|-----------------------------------------------------|----------------------------|
+| Instant        | Timestamp       | A moment in time without a time zone                | created_timestamp          |
+| LocalDateTime  | Timestamp       | A date/time without considering time zones          | movie_opening              |
+| LocalDate      | Date            | A day with no time or time zone information         | product_launch_date        |
+| LocalTime      | Time            | A time of day without date or time zone information | mcdonalds_lunch_start_time |
+| OffsetDateTime | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp    |
+| OffsetTime     | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time            |
+| ZonedDateTime  | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp    |
 
 ### Storing timestamps with timezone
 
