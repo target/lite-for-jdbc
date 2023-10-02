@@ -118,7 +118,7 @@ open class Db(
      * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
      * support.
      */
-    fun <T> withTransaction(
+    fun <T> withTransactionAndIsolation(
         isolationLevel: IsolationLevel,
         block: (Transaction) -> T
     ): T {
@@ -144,7 +144,7 @@ open class Db(
      * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
      * support.
      */
-    fun <T> withTransaction(block: (Transaction) -> T): T = withTransaction(IsolationLevel.TRANSACTION_READ_COMMITTED, block)
+    fun <T> withTransaction(block: (Transaction) -> T): T = withTransactionAndIsolation(IsolationLevel.TRANSACTION_READ_COMMITTED, block)
 
     /**
      * Uses a com.target.liteforjdbc.AutoCommit and closes it once teh block is executed. This can be useful to use a

@@ -458,7 +458,7 @@ class PostgresSqlIntegrationTest {
     }
 
     private fun checkIsolationLevel(isolationLevel: Db.IsolationLevel, expected: String) {
-        val level = db.withTransaction(isolationLevel) { transaction ->
+        val level = db.withTransactionAndIsolation(isolationLevel) { transaction ->
             checkNotNull(
                 transaction.executeQuery(
                     "SELECT current_setting('transaction_isolation')"
