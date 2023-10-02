@@ -358,7 +358,7 @@ JDBC Connection. The connection will be created and cleaned up for you.
 
 lite-for-jdbc supports named parameters in your query. The named parameter syntax is the recommended pattern
 for ease of maintenance and readability. All the examples use named parameters.
-Positional parameters are also supported for backword compatability. The positional parameter
+Positional parameters are also supported for backward compatibility. The positional parameter
 version of each method is available by adding `PositionalParams` to the method name.
 For example, to query using named parameters, call `executeQuery`, and to query using positional
 parameters, call `executeQueryPositionalParams`.
@@ -371,7 +371,7 @@ In your query, use a colon to indicate a named parameter.
 SELECT * FROM T WHERE field = :value1 OR field2 = :value2
 ```
 
-In the above example, invoking it would require a map defind like this
+In the above example, invoking it would require a map defined like this
 
 ```kotlin
 mapOf("value1" to "string value", "value2" to 123)
