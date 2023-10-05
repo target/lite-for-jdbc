@@ -603,14 +603,14 @@ At the end of the withTransaction block, if the block is exited normally the Tra
 exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
 will be closed.
 
-### withTransactionAndIsolation - How to Specify Isolation levels
+### withTransaction - How to Specify Isolation levels
 
 By default, all transactions run with `TRANSACTION_READ_COMMITTED`isolation level. The following shows how to specify a higher one:
 
 ```kotlin
-  db.withTransactionAndIsolation(isolationLevel = Db.IsolationLevel.TRANSACTION_REPEATABLE_READ) 
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_REPEATABLE_READ) 
 
-  db.withTransactionAndIsolation(isolationLevel = Db.IsolationLevel.TRANSACTION_SERIALIZABLE) 
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_SERIALIZABLE) 
 ```
 
 When the transaction is over, isolation level is restored to the default, TRANSACTION_READ_COMMITTED.
