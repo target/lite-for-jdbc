@@ -441,6 +441,34 @@ class PostgresSqlIntegrationTest {
 
         finalCount shouldBe originalCount
     }
+    
+    @Test
+    fun setsReadCommittedIsolationLevel() {
+        checkIsolationLevel(Db.IsolationLevel.TRANSACTION_READ_COMMITTED, "read committed")
+    }
+
+    @Test
+    fun setsRepeatableReadIsolationLevel() {
+        checkIsolationLevel(Db.IsolationLevel.TRANSACTION_REPEATABLE_READ, "repeatable read")
+    }
+
+    @Test
+    fun setsSerializatableIsolationLevel() {
+        checkIsolationLevel(Db.IsolationLevel.TRANSACTION_SERIALIZABLE, "serializable")
+    }
+
+    private fun checkIsolationLevel(isolationLevel: Db.IsolationLevel, expected: String) {
+        val level = db.withTransaction(isolationLevel) { transaction ->
+            checkNotNull(
+                transaction.executeQuery(
+                    "SELECT current_setting('transaction_isolation')"
+                ) { resultSet: ResultSet ->
+                    resultSet.getString("current_setting")
+                }
+            )
+        }
+        level shouldBe expected
+    }
 
     private fun tableCount(): Int {
         return checkNotNull(

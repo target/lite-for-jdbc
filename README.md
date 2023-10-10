@@ -589,7 +589,7 @@ At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be
 ## withTransaction
 
 By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
-multiple features listed below. If any of these features are required, use withTransaction.
+multiple features listed below. If any of these features are required, use withTransaction. Also use withTransaction if you need to specify isolation level.
 
 * Commit - Commits any existing changes to the database and clears any Savepoints and Locks
 * Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
@@ -602,6 +602,18 @@ multiple features listed below. If any of these features are required, use withT
 At the end of the withTransaction block, if the block is exited normally the Transaction will be committed. If an
 exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
 will be closed.
+
+### withTransaction - How to Specify Isolation levels
+
+By default, all transactions run with `TRANSACTION_READ_COMMITTED`isolation level. The following shows how to specify a higher one:
+
+```kotlin
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_REPEATABLE_READ) 
+
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_SERIALIZABLE) 
+```
+
+When the transaction is over, isolation level is restored to the default, TRANSACTION_READ_COMMITTED.
 
 ## DataSource configuration & AutoCommit
 
