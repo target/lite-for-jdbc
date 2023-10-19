@@ -118,19 +118,33 @@ open class Db(
      * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
      * support.
      */
-    fun <T> withTransaction(block: (Transaction) -> T): T {
+    fun <T> withTransaction(
+        isolationLevel: IsolationLevel,
+        block: (Transaction) -> T
+    ): T {
         val transaction = Transaction(connection = dataSource.connection)
-        transaction.use {
+        val currentIsolationLevel = transaction.connection.transactionIsolation
+        return transaction.use {
             try {
+                transaction.connection.transactionIsolation = isolationLevel.intCode
                 val result = block(transaction)
                 transaction.commit()
-                return result
+                result
             } catch (t: Throwable) {
                 transaction.rollback()
                 throw t
+            } finally {
+                transaction.connection.transactionIsolation = currentIsolationLevel
             }
         }
     }
+
+    /**
+     * Uses a com.target.liteforjdbc.Transaction, and commits it once to the block is executed successfully,
+     * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
+     * support.
+     */
+    fun <T> withTransaction(block: (Transaction) -> T): T = withTransaction(IsolationLevel.TRANSACTION_READ_COMMITTED, block)
 
     /**
      * Uses a com.target.liteforjdbc.AutoCommit and closes it once teh block is executed. This can be useful to use a
@@ -168,6 +182,12 @@ open class Db(
      * @return true if the dataSource returns a functioning connection
      */
     fun isDataSourceHealthy() = useConnection { !it.isClosed }
+
+    enum class IsolationLevel(val intCode: Int) {
+        TRANSACTION_READ_COMMITTED(Connection.TRANSACTION_READ_COMMITTED),
+        TRANSACTION_REPEATABLE_READ(Connection.TRANSACTION_REPEATABLE_READ),
+        TRANSACTION_SERIALIZABLE(Connection.TRANSACTION_SERIALIZABLE)
+    }
 
 }
 

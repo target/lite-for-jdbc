@@ -8,42 +8,44 @@ Lightweight library to help simplify JDBC database access. Main features:
   handling, updates, and batch statements
 
 <!-- TOC -->
-
 * [lite-for-jdbc](#lite-for-jdbc)
 * [Gradle Setup](#gradle-setup)
 * [Db Setup](#db-setup)
+  * [Custom Database Types](#custom-database-types)
 * [Methods](#methods)
-    * [executeQuery](#executequery)
-    * [findAll](#findall)
-    * [executeUpdate](#executeupdate)
-    * [executeWithGeneratedKeys](#executewithgeneratedkeys)
-    * [executeBatch](#executebatch)
-    * [useNamedParamPreparedStatement](#usenamedparampreparedstatement)
-    * [useNamedParamPreparedStatementWithAutoGenKeys](#usenamedparampreparedstatementwithautogenkeys)
-    * [useConnection](#useconnection)
+  * [executeQuery](#executequery)
+  * [findAll](#findall)
+  * [executeUpdate](#executeupdate)
+  * [executeWithGeneratedKeys](#executewithgeneratedkeys)
+  * [executeBatch](#executebatch)
+  * [executeBatch Counts only](#executebatch-counts-only)
+  * [useNamedParamPreparedStatement](#usenamedparampreparedstatement)
+  * [useNamedParamPreparedStatementWithAutoGenKeys](#usenamedparampreparedstatementwithautogenkeys)
+  * [useConnection](#useconnection)
 * [Query Parameters](#query-parameters)
-    * [Named Parameters](#named-parameters)
-    * [Positional Params](#positional-params)
+  * [Named Parameters](#named-parameters)
+  * [Positional Params](#positional-params)
 * [Row Mapping](#row-mapping)
-    * [rowMapper](#rowmapper)
-    * [ResultSet/PreparedStatement extensions](#resultsetpreparedstatement-extensions)
-    * [Date Time in Postgresql](#date-time-in-postgresql)
-        * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
-    * [propertiesToMap](#propertiestomap)
+  * [rowMapper](#rowmapper)
+  * [ResultSet/PreparedStatement extensions](#resultsetpreparedstatement-extensions)
+  * [Java type to Postgresql column type mapping requirements](#java-type-to-postgresql-column-type-mapping-requirements)
+    * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
+  * [propertiesToMap](#propertiestomap)
 * [Transactions & Autocommit](#transactions--autocommit)
-    * [withAutoCommit](#withautocommit)
-    * [withTransaction](#withtransaction)
-    * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
-    * [DataSource settings](#datasource-settings)
-    * [Testing with mockkTransaction](#testing-with-mockktransaction)
+  * [withAutoCommit](#withautocommit)
+  * [withTransaction](#withtransaction)
+  * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
+  * [DataSource settings](#datasource-settings)
+  * [Testing with mockkTransaction](#testing-with-mockktransaction)
 * [IntelliJ SQL language integration](#intellij-sql-language-integration)
 * [Development](#development)
-    * [Building](#building)
-    * [Issues](#issues)
-    * [Contributing](#contributing)
-        * [Code review standards](#code-review-standards)
-        * [Testing standards](#testing-standards)
-
+  * [Building](#building)
+  * [Issues](#issues)
+  * [Contributing](#contributing)
+    * [Code review standards](#code-review-standards)
+    * [Testing standards](#testing-standards)
+* [Breaking version changes](#breaking-version-changes)
+    * [`1.9.2` -> `2.0.0`](#192---200)
 <!-- TOC -->
 
 # Gradle Setup
@@ -461,17 +463,19 @@ To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have b
 | setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
 
 
-## Date Time in Postgresql
+## Java type to Postgresql column type mapping requirements
 
-| Type            | Postgresql Type | Description                                         | Example fields          |
-|-----------------|-----------------|-----------------------------------------------------|-------------------------|
-| Instant         | Timestamp       | A moment in time without a time zone                | created_timestamp       |
-| LocalDateTime   | Timestamp       | A date/time without considering time zones          | ?                       |
-| LocalDate       | Date            | A day with no time or time zone information         | product_launch_date     |
-| LocalTime       | Time            | A time of day without date or time zone information | ?                       |
-| OffsetDateTime  | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp |
-| OffsetTime      | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time         |
-| ZonedDateTime   | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp |
+The following table shows the Java type to Postgresql column type pairing that should be used with lite-for-jdbc.
+
+| Java Type      | Postgresql Type | Description                                         | Example fields             |
+|----------------|-----------------|-----------------------------------------------------|----------------------------|
+| Instant        | Timestamp       | A moment in time without a time zone                | created_timestamp          |
+| LocalDateTime  | Timestamp       | A date/time without considering time zones          | movie_opening              |
+| LocalDate      | Date            | A day with no time or time zone information         | product_launch_date        |
+| LocalTime      | Time            | A time of day without date or time zone information | mcdonalds_lunch_start_time |
+| OffsetDateTime | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp    |
+| OffsetTime     | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time            |
+| ZonedDateTime  | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp    |
 
 ### Storing timestamps with timezone
 
@@ -585,7 +589,7 @@ At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be
 ## withTransaction
 
 By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
-multiple features listed below. If any of these features are required, use withTransaction.
+multiple features listed below. If any of these features are required, use withTransaction. Also use withTransaction if you need to specify isolation level.
 
 * Commit - Commits any existing changes to the database and clears any Savepoints and Locks
 * Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
@@ -598,6 +602,18 @@ multiple features listed below. If any of these features are required, use withT
 At the end of the withTransaction block, if the block is exited normally the Transaction will be committed. If an
 exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
 will be closed.
+
+### withTransaction - How to Specify Isolation levels
+
+By default, all transactions run with `TRANSACTION_READ_COMMITTED`isolation level. The following shows how to specify a higher one:
+
+```kotlin
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_REPEATABLE_READ) 
+
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_SERIALIZABLE) 
+```
+
+When the transaction is over, isolation level is restored to the default, TRANSACTION_READ_COMMITTED.
 
 ## DataSource configuration & AutoCommit
 
