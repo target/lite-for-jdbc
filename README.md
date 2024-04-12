@@ -177,7 +177,7 @@ val user: User = checkNotNull(
 ) { "Unexpected state: Query didn't return a result." }
 ```
 
-If on inserting new records, you want access to the id & timestamp of the insert, returning * notation will give you access to this infotmation. e.g.
+If on inserting new records, you want access to the inserted content, returning * notation will give you access to this information. e.g.
 ```kotlin 
 db.executeQuery(
             sql =
