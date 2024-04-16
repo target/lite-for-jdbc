@@ -147,7 +147,6 @@ val user: User? = db.executeQuery(
     )
 }
 ```
-
 If you have more than one method in your repository that needs to map a resultSet into the same domain object,
 it's typical to extract the mapper into a standalone function.
 
@@ -176,6 +175,25 @@ val user: User = checkNotNull(
         rowMapper = ::mapToUser
     )
 ) { "Unexpected state: Query didn't return a result." }
+```
+
+If on inserting new records, you want access to the inserted content, returning * notation will give you access to this information. e.g.
+```kotlin 
+db.executeQuery(
+            sql =
+                """
+                INSERT INTO USERS (id, username) 
+                VALUES (:id, :username) 
+                RETURNING *
+                """.trimIndent(),
+            args =
+                mapOf(
+                    "id" to user.id,
+                    "username" to user.userid
+                ),
+            rowMapper = ::mapToUser,
+        ),
+
 ```
 
 ## findAll

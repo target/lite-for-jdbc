@@ -147,7 +147,7 @@ open class Db(
     fun <T> withTransaction(block: (Transaction) -> T): T = withTransaction(IsolationLevel.TRANSACTION_READ_COMMITTED, block)
 
     /**
-     * Uses a com.target.liteforjdbc.AutoCommit and closes it once teh block is executed. This can be useful to use a
+     * Uses a com.target.liteforjdbc.AutoCommit and closes it once the block is executed. This can be useful to use a
      * single connection from the DataSource for a series of actions. Using other convenience query methods on this
      * class will use a new AutoCommit object per call, which will be less efficient for multiple calls.
      */
