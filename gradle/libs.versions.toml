@@ -11,7 +11,7 @@ healthMonitorInterface = "1.2.0"
 
 jupiter = "5.9.2"
 kotest = "5.6.2"
-mockk = "1.13.5"
+mockk = "1.13.12"
 testContainers = "1.18.3"
 postgresql = "42.6.0"
 h2 = "2.2.220"
