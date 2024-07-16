@@ -10,7 +10,7 @@ hikariCP = "5.0.1"
 healthMonitorInterface = "1.2.0"
 
 jupiter = "5.9.2"
-kotest = "5.6.2"
+kotest = "5.9.1"
 mockk = "1.13.5"
 testContainers = "1.18.3"
 postgresql = "42.6.0"
