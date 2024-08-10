@@ -1,5 +1,5 @@
 [versions]
-kotlin = "1.9.0"
+kotlin = "2.0.10"
 
 kotlinLogging = "3.0.5"
 
