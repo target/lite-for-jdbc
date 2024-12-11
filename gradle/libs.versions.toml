@@ -9,7 +9,7 @@ nexusPublishPlugin = "2.0.0"
 hikariCP = "6.2.1"
 healthMonitorInterface = "1.2.0"
 
-jupiter = "5.11.2"
+jupiter = "5.11.3"
 kotest = "5.9.1"
 mockk = "1.13.13"
 testContainers = "1.20.4"
