@@ -107,7 +107,6 @@ val db = Db(dataSource)
 ## executeQuery
 
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> executeQuery(
   query: String,
   parameters: Map<String, Any?> = emptyMap(),
@@ -167,7 +166,6 @@ val user: User = checkNotNull(
 
 ## findAll
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> findAll(
   sql: String,
   args: Map<String, Any?> = mapOf(),
@@ -189,7 +187,6 @@ val adminUsers: List<User> = db.findAll(
 
 ## executeUpdate
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun executeUpdate(
   sql: String,
   args: Map<String, Any?> = mapOf()
@@ -212,7 +209,6 @@ Docs on the helper function [propertiesToMap](#propertiestomap)
 
 ## executeWithGeneratedKeys
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> executeWithGeneratedKeys(
   sql: String,
   args: Map<String, Any?> = mapOf(),
@@ -242,7 +238,6 @@ val newModel = model.copy(id = results.first())
 ## executeBatch
 
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> executeBatch(
   sql: String,
   args: List<Map<String, Any?>>,
@@ -283,7 +278,6 @@ val insertedIds = db.executeBatch(
 ## executeBatch Counts only
 
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun executeBatch(
   sql: String,
   args: List<Map<String, Any?>>
@@ -317,7 +311,6 @@ results.forEach { println("$it row(s) inserted") }
 
 ## useNamedParamPreparedStatement
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> useNamedParamPreparedStatement(
   sql: String,
   block: (NamedParamPreparedStatement) -> T
@@ -337,7 +330,6 @@ PreparedStatement is what will be provided to you)
 
 ## useNamedParamPreparedStatementWithAutoGenKeys
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> useNamedParamPreparedStatementWithAutoGenKeys(
   sql: String,
   block: (NamedParamPreparedStatement) -> T
@@ -357,7 +349,6 @@ PreparedStatement is what will be provided to you)
 
 ## useConnection
 ```kotlin
-@Suppress("UNUSED_PARAMETER")
 fun <T> useConnection(block: (Connection) -> T): T {
   TODO()
 }
