@@ -82,6 +82,27 @@ class KotlinClassToMapTest {
         result["nullable"] shouldBe "Not Null"
     }
 
+    @Test
+    fun `Test propertiesToMap with override values`() {
+        val value = Domain1(
+            i = 1,
+            realyRealyLongPropertyNameThatShouldntExistButByTestingThisWeShouldBeSafe = "string",
+            `value's name has special chars` = 10L,
+            nullable = "Not Null"
+        )
+
+        val result = value.propertiesToMap(override = mapOf(
+            "nullable" to "Null"
+        ))
+
+        result shouldNotBe null
+        result.size shouldBe 4
+        result["i"] shouldBe 1
+        result["realyRealyLongPropertyNameThatShouldntExistButByTestingThisWeShouldBeSafe"] shouldBe "string"
+        result["value's name has special chars"] shouldBe 10L
+        result["nullable"] shouldBe "Null"
+    }
+
     private data class Domain1(
         val i: Int,
         val realyRealyLongPropertyNameThatShouldntExistButByTestingThisWeShouldBeSafe: String,

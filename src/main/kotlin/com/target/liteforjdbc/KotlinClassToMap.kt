@@ -9,13 +9,16 @@ typealias NameTransformer = (name: String) -> String
 private fun NO_OP(name: String) = name
 
 private val camelRegex = "(?<=[a-zA-Z])[A-Z]".toRegex()
-private val snakeRegex = "_[a-zA-Z]".toRegex()
 
 fun camelToSnakeCase(name: String) = camelRegex.replace(name) {
     "_${it.value}"
 }.lowercase()
 
-fun Any.propertiesToMap(exclude: Collection<String> = emptyList(), nameTransformer: NameTransformer = ::NO_OP): Map<String, Any?> {
+fun Any.propertiesToMap(
+    exclude: Collection<String> = emptyList(),
+    nameTransformer: NameTransformer = ::NO_OP,
+    override: Map<String, Any?> = emptyMap()
+): Map<String, Any?> {
     val props = this::class.memberProperties
         .filter {
             it.name !in exclude
@@ -24,5 +27,15 @@ fun Any.propertiesToMap(exclude: Collection<String> = emptyList(), nameTransform
             @Suppress("UNCHECKED_CAST")
             it as KProperty1<Any, Any?>
         }
-    return props.associateBy({ nameTransformer(it.name) }, { it.get(this) })
+    return props.associateBy(
+        {
+            nameTransformer(it.name)
+        }, {
+            val name = nameTransformer(it.name)
+            if (override.containsKey(name)) {
+                override[name]
+            } else {
+                it.get(this)
+            }
+        })
 }

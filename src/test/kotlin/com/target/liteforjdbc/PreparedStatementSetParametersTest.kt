@@ -6,11 +6,11 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import java.sql.JDBCType
 import java.sql.PreparedStatement
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.sql.SQLType
+import java.time.*
+import java.util.*
 
 
 class PreparedStatementSetParametersTest {
@@ -72,6 +72,87 @@ class PreparedStatementSetParametersTest {
         preparedStatementProxy.setParameter(1, value)
 
         verify { mockPreparedStatement.setObject(1, LocalDateTime.ofInstant(value, ZoneOffset.UTC)) }
+    }
+
+    @Test
+    fun testSetLocalDateTime() {
+        val value = LocalDateTime.now()
+        preparedStatementProxy.setLocalDateTime(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetUUID() {
+        val value = UUID.randomUUID()
+        preparedStatementProxy.setUUID(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetLocalDate() {
+        val value = LocalDate.now()
+        preparedStatementProxy.setLocalDate(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetLocalTime() {
+        val value = LocalTime.now()
+        preparedStatementProxy.setLocalTime(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetOffsetDateTime() {
+        val value = OffsetDateTime.now()
+        preparedStatementProxy.setOffsetDateTime(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetOffsetTime() {
+        val value = OffsetTime.now()
+        preparedStatementProxy.setOffsetTime(1, value)
+
+        verify { mockPreparedStatement.setObject(1, value) }
+    }
+
+    @Test
+    fun testSetParameterForEnum() {
+        val value = JDBCType.VARCHAR
+        preparedStatementProxy.setParameter(1, value)
+
+        verify { mockPreparedStatement.setString(1, value.name) }
+    }
+
+    @Test
+    fun testSetDbValue() {
+        val value = BigDecimal("10.1234")
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL)))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL, 4) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, IntParameterType(JDBCType.DECIMAL.vendorTypeNumber)))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL.vendorTypeNumber) }
+
+        preparedStatementProxy.setDbValue(1, DbValue(value, IntParameterType(JDBCType.DECIMAL.vendorTypeNumber), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL.vendorTypeNumber, 4) }
+    }
+
+    @Test
+    fun testSetParameterForDbValue() {
+        val value = BigDecimal("10.1234")
+
+        preparedStatementProxy.setParameter(1, DbValue(value, SqlParameterType(JDBCType.DECIMAL), 4))
+        verify { mockPreparedStatement.setObject(1, value, JDBCType.DECIMAL, 4) }
     }
 
     @Test

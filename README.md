@@ -1,5 +1,7 @@
 # lite-for-jdbc
+
 Lightweight library to help simplify JDBC database access. Main features:
+
 - Lets you use SQL statements with named parameters
 - Automates resource cleanup
 - Provides a functions for common database interaction patterns like individual and list result
@@ -9,6 +11,7 @@ Lightweight library to help simplify JDBC database access. Main features:
 * [lite-for-jdbc](#lite-for-jdbc)
 * [Gradle Setup](#gradle-setup)
 * [Db Setup](#db-setup)
+  * [Custom Database Types](#custom-database-types)
 * [Methods](#methods)
   * [executeQuery](#executequery)
   * [findAll](#findall)
@@ -24,8 +27,8 @@ Lightweight library to help simplify JDBC database access. Main features:
   * [Positional Params](#positional-params)
 * [Row Mapping](#row-mapping)
   * [rowMapper](#rowmapper)
-  * [ResultSet extensions](#resultset-extensions)
-  * [Date Time in Postgresql](#date-time-in-postgresql)
+  * [ResultSet/PreparedStatement extensions](#resultsetpreparedstatement-extensions)
+  * [Java type to Postgresql column type mapping requirements](#java-type-to-postgresql-column-type-mapping-requirements)
     * [Storing timestamps with timezone](#storing-timestamps-with-timezone)
   * [propertiesToMap](#propertiestomap)
 * [Transactions & Autocommit](#transactions--autocommit)
@@ -43,56 +46,74 @@ Lightweight library to help simplify JDBC database access. Main features:
   * [Contributing](#contributing)
     * [Code review standards](#code-review-standards)
     * [Testing standards](#testing-standards)
+* [Breaking version changes](#breaking-version-changes)
+    * [`1.9.2` -> `2.0.0`](#192---200)
 <!-- TOC -->
 
 # Gradle Setup
+
 ```kotlin
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    api("com.target:lite-for-jdbc:1.8.1")
+    api("com.target:lite-for-jdbc:2.1.1")
 }
 ```
 
 # Db Setup
 
 The core of lite-for-jdbc is the Db class. A Db object is intended to be used as a singleton and
-injected as a dependency in repository classes. It requires a DataSource constructor argument,
+injected as a dependency in repository classes. It requires a DataSource constructor argument,  
 and there is a DataSourceFactory to help with that.
 The typical recommendation is to use Hikari, which is configured with reasonable defaults, but you can customize
 it to any DataSource.
 Examples:
 
-Hikari:
+Using DataSourceFactory:
 
 ```kotlin
-val dataSource = DatasourceFactory(DbConfig(
-    username = "user",
-    password = "password",
-    databaseName = "dbName"
-)).dataSource()
-
-val db = Db(dataSource)
-```
-
-H2 in-memory:
-
-```kotlin
-val dataSource = DatasourceFactory(DbConfig(
+val config = DbConfig(
   type = "H2_INMEM",
   username = "user",
   password = "password",
   databaseName = "dbName"
-)).dataSource()
+)
+val dataSource = DataSourceFactory.dataSource(config)
 
 val db = Db(dataSource)
 ```
 
-See DbConfig for a full list of configuration options available.
+Or you can use the Db constructor that accepts a DbConfig directly. Db will use DataSourceFactory under the covers for you.
 
-If another implementation of DataSource is required, you can construct your own as shown below:
+```kotlin
+val db = Db(DbConfig(
+  type = "H2_INMEM",
+  username = "user",
+  password = "password",
+  databaseName = "dbName"
+))
+```
+
+See `DbConfig` for a full list of configuration options available.
+
+## Custom Database Types
+
+If another implementation of DataSource is required, you can register a custom "Type" to be set on `DbConfig` and build the
+respective `DataSource` in a `DataSourceBuilder` lambda as shown below.
+
+```kotlin
+DataSourceFactory.registerDataSourceBuilder("custom") {config: DbConfig ->
+  val fullConfig = config.copy(
+    jdbcUrl = "jdbc:custom:server//${config.host}:${config.port}/${config.databaseName}"
+  )
+  hikariDataSource(fullConfig)
+}
+```
+
+Or if you don't wish to use the `DbConfig` configuration class, a dataSource can be constructed directly and injected into the
+`Db` instance.
 
 ```kotlin
 val dataSource = JdbcDataSource().apply {
@@ -104,6 +125,7 @@ val db = Db(dataSource)
 ```
 
 # Methods
+
 ## executeQuery
 
 ```kotlin
@@ -131,7 +153,6 @@ val user: User = db.executeQuery(
   )
 }
 ```
-
 If you have more than one method in your repository that needs to map a resultSet into the same domain object,
 it's typical to extract the mapper into a standalone function.
 
@@ -162,6 +183,25 @@ val user: User = checkNotNull(
         rowMapper = ::mapToUser
     )
 ) { "Unexpected state: Query didn't return a result." }
+```
+
+If on inserting new records, you want access to the inserted content, returning * notation will give you access to this information. e.g.
+```kotlin 
+db.executeQuery(
+            sql =
+                """
+                INSERT INTO USERS (id, username) 
+                VALUES (:id, :username) 
+                RETURNING *
+                """.trimIndent(),
+            args =
+                mapOf(
+                    "id" to user.id,
+                    "username" to user.userid
+                ),
+            rowMapper = ::mapToUser,
+        ),
+
 ```
 
 ## findAll
@@ -247,14 +287,14 @@ fun <T> executeBatch(
 }
 ```
 
-executeBatch is used to run the same SQL statement with different parameters in batch mode. 
+executeBatch is used to run the same SQL statement with different parameters in batch mode.
 This can give you significant performance improvements.
 
-Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters 
-for that execution. In the following example there will be two queries executed in a single batch. The first will 
+Args is a list of maps. Each item in the list will be a query execution in a batch. The Map will provide the parameters
+for that execution. In the following example there will be two queries executed in a single batch. The first will
 insert model1, and the second will insert model2.
 
-RowMapper maps the results to the specified result type. 
+RowMapper maps the results to the specified result type.
 
 The response is a list of Objects of type `T`. Each object represents a batch query result. Most likely there will
 be one result per query execution. In the following example the results list has 2 elements. The first element  
@@ -336,7 +376,7 @@ fun <T> useNamedParamPreparedStatementWithAutoGenKeys(
 ): T {
   TODO()
 }
-```
+``` 
 
 useNamedParamPreparedStatementWithAutoGenKeys is used to run blocks of code against a prepared statement that is created
 for you, and clean up is done automatically. This should only be used if none of the above methods meet your needs, and
@@ -354,13 +394,14 @@ fun <T> useConnection(block: (Connection) -> T): T {
 }
 ```
 
-useConnection is the lowest level method, and should only be used if you require direct access to the 
+useConnection is the lowest level method, and should only be used if you require direct access to the
 JDBC Connection. The connection will be created and cleaned up for you.
 
 # Query Parameters
 
 lite-for-jdbc supports named parameters in your query. The named parameter syntax is the recommended pattern
 for ease of maintenance and readability. All the examples use named parameters.
+
 Positional parameters are also supported for backward compatability. The positional parameter
 version of each method is available by adding `PositionalParams` to the method name.
 For example, to query using named parameters, call `executeQuery`, and to query using positional
@@ -380,16 +421,19 @@ mapOf("value1" to "string value", "value2" to 123)
 ```
 
 Named Parameters can NOT be mixed with positional parameters - doing so will result in an exception.
+
 ```sql
 SELECT * FROM T WHERE field = :value1 OR field2 = ?
 ```
 
 Colons inside of quotes or double quotes will be ignored.
+
 ```sql
 SELECT * FROM T WHERE field = 'This will ignore the : in the string'
 ```
 
 If you need a colon in the SQL, escape it with a double colon.
+
 ```sql
 SELECT * FROM T WHERE field = ::systemVariableInOracle
 ```
@@ -442,33 +486,36 @@ val results = db.findAll(sql = "SELECT * FROM model",
 )
 ```
 
+## ResultSet/PreparedStatement extensions
 
-## ResultSet extensions
+To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have been added.
 
-To facilitate mapping, ResultSet.get[Date/Time] extensions have been added to ResultSet.
+| Extension methods                   | Behavior of ResultSet.get              | Behavior of PreparedStatement.set                               |
+|-------------------------------------|----------------------------------------|-----------------------------------------------------------------|
+| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC))  |
+| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                     |
+| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                         |
+| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                         |
+| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                    |
+| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                        |                                      
+| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                  |
+| getUUID/setUUID                     | getObject(c, UUID)                     | setObject(c, UUID)                                              |
+| setDbValue                          |                                        | setObject(c, DbValue.value, DbValue.type, [DbValue.percission]) |
 
 
-| Extension methods                   | Behavior of get                        | Behavior of set                                                |
-|-------------------------------------|----------------------------------------|----------------------------------------------------------------|
-| getInstant/setInstant               | getLocalDateTime(c).toInstant(UTC)     | setObject(c, LocalDateTime.ofInstant(instant, ZoneOffset.UTC)) |
-| getLocalDateTime/setLocalDateTime   | getObject(c, LocalDateTime)            | setObject(c, LocalDateTime)                                    |
-| getLocalDate/setLocalDate           | getObject(c, LocalDate)                | setObject(c, LocalDate)                                        |
-| getLocalTime/setLocalTime           | getObject(c, LocalTime)                | setObject(c, LocalTime)                                        |
-| getOffsetDateTime/setOffsetDateTime | getObject(c, OffsetDateTime)           | setObject(c, OffsetDateTime)                                   |
-| getOffsetTime/setOffsetTime         | getObject(c, OffsetTime)               | setObject(c, OffsetTime)                                       |                                      
-| getZonedDateTime/setZonedDateTime   | getOffsetDateTime(c).toZonedDateTime() | setObject(c, zonedDateTime.toOffsetDateTime())                 |
+## Java type to Postgresql column type mapping requirements
 
-## Date Time in Postgresql
+The following table shows the Java type to Postgresql column type pairing that should be used with lite-for-jdbc.
 
-| Type            | Postgresql Type | Description                                         | Example fields          |
-|-----------------|-----------------|-----------------------------------------------------|-------------------------|
-| Instant         | Timestamp       | A moment in time without a time zone                | created_timestamp       |
-| LocalDateTime   | Timestamp       | A date/time without considering time zones          | ?                       |
-| LocalDate       | Date            | A day with no time or time zone information         | product_launch_date     |
-| LocalTime       | Time            | A time of day without date or time zone information | ?                       |
-| OffsetDateTime  | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp |
-| OffsetTime      | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time         |
-| ZonedDateTime   | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp |
+| Java Type      | Postgresql Type | Description                                         | Example fields             |
+|----------------|-----------------|-----------------------------------------------------|----------------------------|
+| Instant        | Timestamp       | A moment in time without a time zone                | created_timestamp          |
+| LocalDateTime  | Timestamp       | A date/time without considering time zones          | movie_opening              |
+| LocalDate      | Date            | A day with no time or time zone information         | product_launch_date        |
+| LocalTime      | Time            | A time of day without date or time zone information | mcdonalds_lunch_start_time |
+| OffsetDateTime | TimestampTZ     | A date/time with a set offset (-/+hh:mm)            | flight_depart_timestamp    |
+| OffsetTime     | TimeTZ          | A time with a set offset (-/+hh:mm)                 | store_open_time            |
+| ZonedDateTime  | TimestampTZ     | A date/time with a time zone code                   | meeting_start_timestamp    |
 
 ### Storing timestamps with timezone
 
@@ -534,21 +581,29 @@ domain into a map to then be used as named parameters.
 val propMap = model.propertiesToMap()
 ```
 
-Two optional parameters exist to fine tune the process. exclude will skip certain fields when creating the map.
+Three optional parameters exist to fine tune the process. exclude will skip certain fields when creating the map.
 
 ```kotlin
 val propMap = model.propertiesToMap(exclude = listOf("fieldOne"))
 propMap.containsKey("fieldOne") shoudlBe false
 ```
 
-And nameTransformer allows you to transform the keys in the map if you want to use named parameters that don't strictly
+`nameTransformer` allows you to transform the keys in the map if you want to use named parameters that don't strictly
 match the field names on the domain class. For example, if you want the named parameters in your query to use snake case,
-you could use the method as shown below. 
+you could use the method as shown below.
 
 ```kotlin
 val propMap = model.propertiesToMap(nameTransformer = ::camelToSnakeCase)
 propMap.containsKey("field_one") shoudlBe true
 propMap.containsKey("fieldOne") shoudlBe false
+```
+
+`override` will override the values for specific key provided. If this is paired with the
+`nameTransformer`, you should match the transformed name (not the field name).
+
+```kotlin
+val propMap = model.propertiesToMap(override = mapOf("fieldOne" to "Override"))
+propMap["fieldOne"] shoudlBe "Override"
 ```
 
 # Transactions & Autocommit
@@ -571,7 +626,7 @@ At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be
 ## withTransaction
 
 By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
-multiple features listed below. If any of these features are required, use withTransaction.
+multiple features listed below. If any of these features are required, use withTransaction. Also use withTransaction if you need to specify isolation level.
 
 * Commit - Commits any existing changes to the database and clears any save points and Locks
 * Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
@@ -585,9 +640,21 @@ At the end of the withTransaction block, if the block is exited normally the Tra
 exception is thrown, the Transaction will be rolled back. After the final commit/rollback, the Transaction ConnectionSession
 will be closed.
 
+### withTransaction - How to Specify Isolation levels
+
+By default, all transactions run with `TRANSACTION_READ_COMMITTED`isolation level. The following shows how to specify a higher one:
+
+```kotlin
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_REPEATABLE_READ) 
+
+  db.withTransaction(isolationLevel = Db.IsolationLevel.TRANSACTION_SERIALIZABLE) 
+```
+
+When the transaction is over, isolation level is restored to the default, TRANSACTION_READ_COMMITTED.
+
 ## DataSource configuration & AutoCommit
 
-A datasource has a default setting for the autocommit flag which can be configured. But the individual connections can
+A dataSource has a default setting for the autocommit flag which can be configured. But the individual connections can
 be modified to change their autocommit flag. This will be done if the autocommit flag is set to be incompatible with the
 ConnectionSession being used. withTransaction requires a connection with autocommit set to false, and withAutoCommit
 requires a connection with autocommit set to true.
@@ -598,7 +665,7 @@ as there is a potential performance impact to changing that setting.
 
 ## DataSource settings
 
-If the datasource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
+If the dataSource is set to a different autocommit mode than is being used by a call in lite-for-jdbc, the value will be
 changed for the duration of that ConnectionSession
 
 ## Testing with mockkTransaction
@@ -637,7 +704,7 @@ confirmVerified(mockTransaction)
 
 All the query-related methods provided by this library use `sql` as the method parameter name for SQL.
 Using this pattern, you can add SQL language support to IntelliJ, which will then give you features
-like auto-completion, validation, and syntax highlighting.  To enable this, add or edit your
+like auto-completion, validation, and syntax highlighting. To enable this, add or edit your
 project's `.idea/IntelliLang.xml` file with this:
 
 ```xml
@@ -719,3 +786,12 @@ Code reviews will look for consistency with existing code standards and naming c
 ### Testing standards
 
 All changes should include sufficient testing to prove it is working as intended.
+
+# Breaking version changes
+
+### `1.9.2` -> `2.0.0`
+
+**Breaking Change**: Changed the DataSourceFactory to a singleton object and the Type on DbConfig to a String.
+**Reason**: Originally only the statically configured DataSource types were supported due to the use of an
+enum and a statically coded factory. This change was made so that users can modify the factory list to meet their
+individual needs. 

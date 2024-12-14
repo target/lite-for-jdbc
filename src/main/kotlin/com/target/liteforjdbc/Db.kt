@@ -2,7 +2,6 @@ package com.target.liteforjdbc
 
 import java.sql.Connection
 import java.sql.PreparedStatement
-import java.sql.ResultSet
 import javax.sql.DataSource
 
 /**
@@ -34,6 +33,8 @@ import javax.sql.DataSource
 open class Db(
     private val dataSource: DataSource,
 ) {
+
+    constructor(config: DbConfig) : this(DataSourceFactory.dataSource(config))
 
     /**
      * @see AutoCommit#executeUpdatePositionalParams
@@ -117,22 +118,36 @@ open class Db(
      * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
      * support.
      */
-    fun <T> withTransaction(block: (Transaction) -> T): T {
+    fun <T> withTransaction(
+        isolationLevel: IsolationLevel,
+        block: (Transaction) -> T
+    ): T {
         val transaction = Transaction(connection = dataSource.connection)
-        transaction.use {
+        val currentIsolationLevel = transaction.connection.transactionIsolation
+        return transaction.use {
             try {
+                transaction.connection.transactionIsolation = isolationLevel.intCode
                 val result = block(transaction)
                 transaction.commit()
-                return result
+                result
             } catch (t: Throwable) {
                 transaction.rollback()
                 throw t
+            } finally {
+                transaction.connection.transactionIsolation = currentIsolationLevel
             }
         }
     }
 
     /**
-     * Uses a com.target.liteforjdbc.AutoCommit and closes it once teh block is executed. This can be useful to use a
+     * Uses a com.target.liteforjdbc.Transaction, and commits it once to the block is executed successfully,
+     * or rolls back if it throws an exception. This is required to perform any DB interactions that need transaction
+     * support.
+     */
+    fun <T> withTransaction(block: (Transaction) -> T): T = withTransaction(IsolationLevel.TRANSACTION_READ_COMMITTED, block)
+
+    /**
+     * Uses a com.target.liteforjdbc.AutoCommit and closes it once the block is executed. This can be useful to use a
      * single connection from the DataSource for a series of actions. Using other convenience query methods on this
      * class will use a new AutoCommit object per call, which will be less efficient for multiple calls.
      */
@@ -164,9 +179,15 @@ open class Db(
     /**
      * Checks for the health of the underlying DataSource
      *
-     * @return true if the datasource returns a functioning connection
+     * @return true if the dataSource returns a functioning connection
      */
     fun isDataSourceHealthy() = useConnection { !it.isClosed }
+
+    enum class IsolationLevel(val intCode: Int) {
+        TRANSACTION_READ_COMMITTED(Connection.TRANSACTION_READ_COMMITTED),
+        TRANSACTION_REPEATABLE_READ(Connection.TRANSACTION_REPEATABLE_READ),
+        TRANSACTION_SERIALIZABLE(Connection.TRANSACTION_SERIALIZABLE)
+    }
 
 }
 

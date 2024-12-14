@@ -8,15 +8,11 @@ import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.sql.ResultSet
-import java.sql.ResultSetMetaData
 import java.time.*
 
 class ResultSetDateTimesTest {
     @MockK(relaxed = true)
     lateinit var mockResultSet: ResultSet
-
-    @MockK(relaxed = true)
-    lateinit var mockMetaData: ResultSetMetaData
 
     private val localDateTime = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC)
     private val localDate = LocalDate.of(1970, 1, 1)
