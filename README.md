@@ -764,7 +764,7 @@ This library leverages Docker for integration testing (e.g., via Testcontainers)
 
 ### For colima Users
 
-If you are using Colima as your Docker environment, you may need to create a symbolic link for compatibility with tools like TestContainers expecting Docker to be available at the default socket path (/var/run/docker.sock):
+If you are using Colima as your Docker environment, you may need to create a symbolic link for compatibility with tools like TestContainers expecting Docker to be available at the default socket path (`/var/run/docker.sock`):
 ```shell
 sudo ln -s $HOME/.colima/default/docker.sock /var/run/docker.sock
 ```
