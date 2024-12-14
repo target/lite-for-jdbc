@@ -34,6 +34,7 @@ Lightweight library to help simplify JDBC database access. Main features:
 * [Transactions & Autocommit](#transactions--autocommit)
   * [withAutoCommit](#withautocommit)
   * [withTransaction](#withtransaction)
+    * [withTransaction - How to Specify Isolation levels](#withtransaction---how-to-specify-isolation-levels)
   * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
   * [DataSource settings](#datasource-settings)
   * [Testing with mockkTransaction](#testing-with-mockktransaction)
@@ -200,8 +201,7 @@ db.executeQuery(
                     "username" to user.userid
                 ),
             rowMapper = ::mapToUser,
-        ),
-
+        )
 ```
 
 ## findAll
@@ -488,7 +488,7 @@ val results = db.findAll(sql = "SELECT * FROM model",
 
 ## ResultSet/PreparedStatement extensions
 
-To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have been added.
+To facilitate mapping, `ResultSet.get` and `PreparedStatement.set` extensions have been added.
 
 | Extension methods                   | Behavior of ResultSet.get              | Behavior of PreparedStatement.set                               |
 |-------------------------------------|----------------------------------------|-----------------------------------------------------------------|
