@@ -34,12 +34,15 @@ Lightweight library to help simplify JDBC database access. Main features:
 * [Transactions & Autocommit](#transactions--autocommit)
   * [withAutoCommit](#withautocommit)
   * [withTransaction](#withtransaction)
+    * [withTransaction - How to Specify Isolation levels](#withtransaction---how-to-specify-isolation-levels)
   * [DataSource configuration & AutoCommit](#datasource-configuration--autocommit)
   * [DataSource settings](#datasource-settings)
   * [Testing with mockkTransaction](#testing-with-mockktransaction)
 * [IntelliJ SQL language integration](#intellij-sql-language-integration)
 * [Development](#development)
   * [Building](#building)
+  * [Testing with Docker](#testing-with-docker)
+    * [For colima Users](#for-colima-users)
   * [Issues](#issues)
   * [Contributing](#contributing)
     * [Code review standards](#code-review-standards)
@@ -114,11 +117,11 @@ Or if you don't wish to use the `DbConfig` configuration class, a dataSource can
 `Db` instance.
 
 ```kotlin
-val dataSource = JdbcDataSource()
-dataSource.setURL("jdbc:oracle:thin@localhost:5221:dbName")
-dataSource.user = "sa"
-dataSource.password = ""
-
+val dataSource = JdbcDataSource().apply {
+    setURL("jdbc:oracle:thin@localhost:5221:dbName")
+    user = "sa"
+    password = ""
+}  
 val db = Db(dataSource)
 ```
 
@@ -126,42 +129,48 @@ val db = Db(dataSource)
 
 ## executeQuery
 
-```
-executeQuery(
-    sql: String, 
-    args: Map<String, Any?> = mapOf(), 
-    rowMapper: RowMapper<T>
-): T?
+```kotlin
+fun <T> executeQuery(
+  query: String,
+  parameters: Map<String, Any?> = emptyMap(),
+  mapRow: (ResultSet) -> T
+): T? { 
+    TODO("Provide the return value")
+}
 ```
 
 executeQuery is used to for queries intended to return a single result. Example:
 
 ```kotlin
-val user: User? = db.executeQuery(
-    sql = "SELECT * FROM USERS WHERE id = :id",
-    args = mapOf("id" to 86753)
-) { resultSet ->
-    User(
-        id = getLong("id"),
-        userName = getString("username"),
-    )
+import java.sql.ResultSet
+
+val user: User = db.executeQuery(
+  sql = "SELECT * FROM USERS WHERE id = :id",
+  args = mapOf("id" to 86753)
+) { resultSet: ResultSet ->
+  User(
+    id = resultSet.getLong("id"),
+    userName = resultSet.getString("username")
+  )
 }
 ```
 If you have more than one method in your repository that needs to map a resultSet into the same domain object,
 it's typical to extract the mapper into a standalone function.
 
 ```kotlin
-val user: User?  = db.executeQuery(sql = "SELECT * FROM USERS WHERE id = :id",
+val user: User = db.executeQuery(
+  sql = "SELECT * FROM USERS WHERE id = :id",
   args = mapOf("id" to 86753),
   rowMapper = ::mapToUser
 )
 
-private fun mapToUser(resultSet: ResultSet) = with(resultSet) {
-    User(
-        id = getLong("id"),
-        userName = getString("username"),
-    )
+private fun mapToUser(resultSet: ResultSet): User = resultSet.with {
+  User(
+    id = getLong("id"),
+    userName = getString("username")
+  )
 }
+
 ```
 
 `executeQuery` returns a nullable object. If you expect the query to never be null, a common idiom is
@@ -192,18 +201,18 @@ db.executeQuery(
                     "username" to user.userid
                 ),
             rowMapper = ::mapToUser,
-        ),
-
+        )
 ```
 
 ## findAll
-
-```
-findAll(
-    sql: String, 
-    args: Map<String, Any?> = mapOf(), 
-    rowMapper: RowMapper<T>
-): List<T>
+```kotlin
+fun <T> findAll(
+  sql: String,
+  args: Map<String, Any?> = mapOf(),
+  rowMapper: (ResultSet) -> T
+): List<T> { 
+    TODO()
+}
 ```
 
 findAll is used to query for a list of results. e.g.
@@ -217,12 +226,13 @@ val adminUsers: List<User> = db.findAll(
 ```
 
 ## executeUpdate
-
-```
-executeUpdate(
-    sql: String, 
-    args: Map<String, Any?> = mapOf()
-): Int
+```kotlin
+fun executeUpdate(
+  sql: String,
+  args: Map<String, Any?> = mapOf()
+): Int { 
+    TODO()
+}
 ```
 
 executeUpdate is used for statements that do not require a resultSet response. For example updates
@@ -238,14 +248,14 @@ println("$count row(s) inserted")
 Docs on the helper function [propertiesToMap](#propertiestomap)
 
 ## executeWithGeneratedKeys
-
-```
-executeWithGeneratedKeys(
-    sql: String, 
-    args: Map<String, Any?> = mapOf(), 
-    rowMapper: RowMapper<T>
-): List<T>
-
+```kotlin
+fun <T> executeWithGeneratedKeys(
+  sql: String,
+  args: Map<String, Any?> = mapOf(),
+  rowMapper: (ResultSet) -> T
+): List<T> {
+  TODO()
+}
 ```
 
 executeWithGeneratedKeys is used for queries that generate a default value, using something like a sequence or a
@@ -253,11 +263,13 @@ random UUID. These results will need to be mapped since multiple columns can be 
 insert.
 
 ```kotlin
+import java.sql.ResultSet
+
 // Table T has an auto-generated value for the ID column in this example
 val model = Model(field1 = "testName1", field2 = 1001)
 val results = db.executeWithGeneratedKeys(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
   args = listOf(model.propertiesToMap(), model2.propertiesToMap()),
-  rowMapper = { resultSet -> resultSet.get("id") }
+  rowMapper = { resultSet: ResultSet -> resultSet.getString("id") }
 )
 
 val newModel = model.copy(id = results.first())
@@ -265,12 +277,14 @@ val newModel = model.copy(id = results.first())
 
 ## executeBatch
 
-```
-executeBatch(
-    sql: String, 
-    args: List<Map<String, Any?>>,
-    rowMapper: RowMapper<T>
-): List<T>
+```kotlin
+fun <T> executeBatch(
+  sql: String,
+  args: List<Map<String, Any?>>,
+  rowMapper: (ResultSet) -> T
+): List<T> {
+  TODO()
+}
 ```
 
 executeBatch is used to run the same SQL statement with different parameters in batch mode.
@@ -287,25 +301,29 @@ be one result per query execution. In the following example the results list has
 provides the generated ID of the model1 object, and the second element provides the generated ID of the model2 object.
 
 ```kotlin
+import java.sql.ResultSet
+
 val models = listOf(
-    Model(field1 = "testName1", field2 = 1001),
-    Model(field1 = "testName2", field2 = 1002)
+  Model(field1 = "testName1", field2 = 1001),
+  Model(field1 = "testName2", field2 = 1002)
 )
 
 val insertedIds = db.executeBatch(
-    sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
-    args = models.map { it.propertiesToMap() },
-    rowMapper = { resultSet -> resultSet.get("id") }
+  sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
+  args = models.map { it.propertiesToMap() },
+  rowMapper = { resultSet: ResultSet -> resultSet.getLong("id") }
 )
 ```
 
 ## executeBatch Counts only
 
-```
-executeBatch(
-    sql: String, 
-    args: List<Map<String, Any?>>
-): List<Int>
+```kotlin
+fun executeBatch(
+  sql: String,
+  args: List<Map<String, Any?>>
+): List<Int> {
+  TODO()
+}
 ```
 
 executeBatch is used to run the same SQL statement with different parameters in batch mode.
@@ -322,24 +340,27 @@ model1 insert (it should be 1), and the second element indicates how many rows w
 ```kotlin
 val model1 = Model(field1 = "testName1", field2 = 1001)
 val model2 = Model(field1 = "testName2", field2 = 1002)
-val results = db.executeBatch(sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
+val results: List<Int> = db.executeBatch(
+  sql = "INSERT INTO T (field1, field2) VALUES (:field1, :field2)",
   args = listOf(model1.propertiesToMap(), model2.propertiesToMap())
 )
-
-results.forEach { println("$it row(s) inserted")}
+results.forEach { println("$it row(s) inserted") }
 ```
+
+
 
 ## useNamedParamPreparedStatement
-
-```
-useNamedParamPreparedStatement(
-    sql: String, 
-    block: (NamedParamPreparedStatement) -> T
-): T
+```kotlin
+fun <T> useNamedParamPreparedStatement(
+  sql: String,
+  block: (NamedParamPreparedStatement) -> T
+): T {
+  TODO()
+}
 ```
 
 usePreparedStatement is used to run blocks of code against a prepared statement that is created for you, and clean up
-is done automatically. This should only be used if none of the above methods meet your needs and you need access to the
+is done automatically. This should only be used if none of the above methods meet your needs, and you need access to the
 raw NamedParamPreparedStatement.
 
 This method will NOT return generated keys.
@@ -348,13 +369,14 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useNamedParamPreparedStatementWithAutoGenKeys
-
-```
-useNamedParamPreparedStatementWithAutoGenKeys(
-    sql: String, 
-    block: (NamedParamPreparedStatement) -> T
-): T
-```
+```kotlin
+fun <T> useNamedParamPreparedStatementWithAutoGenKeys(
+  sql: String,
+  block: (NamedParamPreparedStatement) -> T
+): T {
+  TODO()
+}
+``` 
 
 useNamedParamPreparedStatementWithAutoGenKeys is used to run blocks of code against a prepared statement that is created
 for you, and clean up is done automatically. This should only be used if none of the above methods meet your needs, and
@@ -366,9 +388,10 @@ Unlike the other methods listed here, the PositionalParam option is simply usePr
 PreparedStatement is what will be provided to you)
 
 ## useConnection
-
-```
-useConnection(block:(Connection) -> T): T
+```kotlin
+fun <T> useConnection(block: (Connection) -> T): T {
+  TODO()
+}
 ```
 
 useConnection is the lowest level method, and should only be used if you require direct access to the
@@ -378,7 +401,8 @@ JDBC Connection. The connection will be created and cleaned up for you.
 
 lite-for-jdbc supports named parameters in your query. The named parameter syntax is the recommended pattern
 for ease of maintenance and readability. All the examples use named parameters.
-Positional parameters are also supported for backward compatibility. The positional parameter
+
+Positional parameters are also supported for backward compatability. The positional parameter
 version of each method is available by adding `PositionalParams` to the method name.
 For example, to query using named parameters, call `executeQuery`, and to query using positional
 parameters, call `executeQueryPositionalParams`.
@@ -392,7 +416,6 @@ SELECT * FROM T WHERE field = :value1 OR field2 = :value2
 ```
 
 In the above example, invoking it would require a map defined like this
-
 ```kotlin
 mapOf("value1" to "string value", "value2" to 123)
 ```
@@ -400,7 +423,6 @@ mapOf("value1" to "string value", "value2" to 123)
 Named Parameters can NOT be mixed with positional parameters - doing so will result in an exception.
 
 ```sql
--- ILLEGAL
 SELECT * FROM T WHERE field = :value1 OR field2 = ?
 ```
 
@@ -415,9 +437,7 @@ If you need a colon in the SQL, escape it with a double colon.
 ```sql
 SELECT * FROM T WHERE field = ::systemVariableInOracle
 ```
-
-The above query will have no named paraemters, and the sql will translate INTO the following
-
+The above query will have no named parameters, and the sql will translate INTO the following
 ```sql
 SELECT * FROM T WHERE field = :systemVariableInOracle
 ```
@@ -445,16 +465,18 @@ The rowMapper takes a ResultSet and maps the current row to the returned object.
 ResultSet for you where necessary. This mapper can interact directly with the ResultSet as seen in the following example:
 
 ```kotlin
+
+import java.sql.ResultSet
 import java.time.Instant
- 
-data class Model (
+
+data class Model(
   val field1: String,
   val field2: Int,
   val field3: Instant
 )
 
-val results = db.findAll(sql = "SELECT * FROM model", 
-  rowMapper = { resultSet ->
+val results = db.findAll(sql = "SELECT * FROM model",
+  rowMapper = { resultSet: ResultSet ->
     Model(
       field1 = resultSet.getString("field_1"),
       field2 = resultSet.getInt("field_2"),
@@ -466,7 +488,7 @@ val results = db.findAll(sql = "SELECT * FROM model",
 
 ## ResultSet/PreparedStatement extensions
 
-To facilitate mapping, ResultSet.get and PreparedStatement.set extensions have been added.
+To facilitate mapping, `ResultSet.get` and `PreparedStatement.set` extensions have been added.
 
 | Extension methods                   | Behavior of ResultSet.get              | Behavior of PreparedStatement.set                               |
 |-------------------------------------|----------------------------------------|-----------------------------------------------------------------|
@@ -502,7 +524,7 @@ inserted, but it is stored in UTC with NO KNOWLEDGE of the Time Zone offset prov
 or Zoned DateTimes are read back from Postgres, you will always get the data with a Zero offset. If you need to save
 a timestamp AND a timezone, you will need to have two fields: one for the timestamp and one for the timezone.
 
-We find the simplest solution is to have a pair of fields with a Instant/Timestamp for the date/time, and a String/Text
+We find the simplest solution is to have a pair of fields with an Instant/Timestamp for the date/time, and a String/Text
 field for a Zone ID along with convenience methods. See the below example code
 
 ```postgresql
@@ -518,39 +540,36 @@ CREATE TABLE flight
 
 ```kotlin
 // Domain Class
- import java.time.ZoneIdconst 
- import java.time.Instant
- import java.time.ZonedDateTime
- 
- val UNSET: Long = -1
+import java.time.ZoneIdconst
+import java.time.Instant
+import java.time.ZonedDateTime
 
-data class Delivery (
-  val id: Long = UNSET,
+val unSet: Long = -1
+
+data class Delivery(
+  val id: Long = unSet,
   val deliveryAddress: String,
-  val deliveryTimestamp: Instant, 
-  val deliveryTimezone: ZoneId
+  var deliveryTimestamp: Instant,
+  var deliveryTimezone: ZoneId,
 ) {
-    fun getFlightDepartDateTime(): ZonedDateTime {
-        return ZonedDateTime.ofInstant(deliveryTimestamp, deliveryTimezone)
-    }
-    fun setFlightDepartDateTime(value: ZonedDateTime) {
-      this.deliveryTimestamp = value.toInstant()
-      this.deliveryTimezone = value.zone
-    }
-    
+  fun getFlightDepartDateTime(): ZonedDateTime {
+    return ZonedDateTime.ofInstant(deliveryTimestamp, deliveryTimezone)
+  }
+  fun setFlightDepartDateTime(value: ZonedDateTime) {
+    this.deliveryTimestamp = value.toInstant()
+    this.deliveryTimezone = value.zone
+  }
 }
 ```
 
 ```kotlin
 // Mapping
-
-private fun ResultSet.toDelivery() : Delivery = Delivery(
-  id = getLong("id"),
-  deliveryAddress = getString("delivery_address"),
-  deliveryTimestamp = getInstant("delivery_timestamp"),
-  deliveryTimezone = java.time.ZoneId.of(getString("delivery_timezone"))
+private fun toDelivery(resultSet: ResultSet): Delivery = Delivery(
+  id = resultSet.getLong("id"),
+  deliveryAddress = resultSet.getString("delivery_address"),
+  deliveryTimestamp = resultSet.getInstant("delivery_timestamp"),
+  deliveryTimezone = java.time.ZoneId.of(resultSet.getString("delivery_timezone")),
 )
-
 ```
 
 ## propertiesToMap
@@ -609,7 +628,7 @@ At the end of the withAutoCommit block, the AutoCommit ConnectionSession will be
 By using a Transaction ConnectionSession, changes will NOT be immediately committed to the database. Which allows for
 multiple features listed below. If any of these features are required, use withTransaction. Also use withTransaction if you need to specify isolation level.
 
-* Commit - Commits any existing changes to the database and clears any Savepoints and Locks
+* Commit - Commits any existing changes to the database and clears any save points and Locks
 * Rollback - Reverts the changes since the most recent commit, or the beginning of the ConnectionSession if no commits
   have been done. A partial rollback can also be done to a specific Savepoint
 * Savepoint - Saves the current point of the transaction which can be used to perform a partial Rollback
@@ -739,6 +758,17 @@ Lite for JDBC uses standard gradle tasks
 ```shell
 ./gradlew build
 ```
+## Testing with Docker
+
+This library leverages Docker for integration testing (e.g., via Testcontainers). Ensure Docker is installed and running on your system.
+
+### For colima Users
+
+If you are using Colima as your Docker environment, you may need to create a symbolic link for compatibility with tools like TestContainers expecting Docker to be available at the default socket path (`/var/run/docker.sock`):
+```shell
+sudo ln -s $HOME/.colima/default/docker.sock /var/run/docker.sock
+```
+This ensures that applications and libraries can communicate with Colima Docker daemon. Be cautious, as this might interfere with other Docker installations.
 
 ## Issues
 
