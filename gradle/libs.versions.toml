@@ -13,7 +13,7 @@ jupiter = "5.11.3"
 kotest = "5.9.1"
 mockk = "1.13.13"
 testContainers = "1.20.4"
-postgresql = "42.7.4"
+postgresql = "42.7.5"
 h2 = "2.3.232"
 
 [libraries]
