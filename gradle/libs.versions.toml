@@ -6,7 +6,7 @@ kotlinLogging = "3.0.5"
 versionsPlugin = "0.52.0"
 nexusPublishPlugin = "2.0.0"
 
-hikariCP = "6.3.0"
+hikariCP = "7.0.0"
 healthMonitorInterface = "1.2.0"
 
 jupiter = "5.12.2"
